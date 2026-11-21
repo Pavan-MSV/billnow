@@ -1,0 +1,31 @@
+{
+  "name": "BillNow – Warranty & Invoice Vault",
+  "short_name": "BillNow",
+  "description": "Never Forget a Warranty Again. Manage product purchases, invoices, warranties and service records.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "48x48 72x72 96x96 128x128 192x192 256x256 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities", "finance"],
+  "shortcuts": [
+    {
+      "name": "Add Product",
+      "url": "/products/add",
+      "description": "Quickly add a new product and warranty"
+    },
+    {
+      "name": "Warranty Alerts",
+      "url": "/notifications",
+      "description": "Check expiring warranties"
+    }
+  ]
+}

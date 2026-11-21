@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * BillNow design tokens.
+ * Semantic colours are exposed as CSS variables and consumed by Tailwind
+ * (see tailwind.config.js -> theme.extend.colors). This keeps the palette in
+ * one place and makes theming (light/dark) trivial.
+ */
+@layer base {
+  :root {
+    --bn-bg: 248 250 252; /* slate-50 */
+    --bn-surface: 255 255 255; /* white */
+    --bn-elevated: 241 245 249; /* slate-100 */
+    --bn-line: 226 232 240; /* slate-200 */
+    --bn-ink: 15 23 42; /* slate-900 */
+    --bn-subtle: 100 116 139; /* slate-500 */
+    color-scheme: light;
+  }
+
+  .dark {
+    --bn-bg: 2 6 23; /* slate-950 */
+    --bn-surface: 15 23 42; /* slate-900 */
+    --bn-elevated: 30 41 59; /* slate-800 */
+    --bn-line: 30 41 59; /* slate-800 */
+    --bn-ink: 241 245 249; /* slate-100 */
+    --bn-subtle: 148 163 184; /* slate-400 */
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-bg text-ink antialiased select-none;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    touch-action: manipulation;
+    overscroll-behavior-y: none;
+  }
+
+  /* Prevent iOS zoom on input focus while remaining touch-comfortable */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  @media (min-width: 640px) {
+    input, select, textarea {
+      font-size: 14px !important;
+    }
+  }
+
+  /* Hide scrollbars for clean mobile swiping */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-bg;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+  }
+
+  .muted {
+    @apply text-subtle;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-ink;
+  }
+
+  .field-hint {
+    @apply mt-1 text-xs text-subtle;
+  }
+
+  .field-error {
+    @apply mt-1 text-xs font-medium text-danger-600 dark:text-danger-400;
+  }
+}
+
+/* Thin, unobtrusive scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-slate-300 dark:bg-slate-700;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

@@ -1,0 +1,35 @@
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+*.local
+
+# ---- Python / backend ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+storage/
+backend/storage/
+
+# ---- Node / frontend ----
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+.vite/
+
+# ---- Local database (portable PostgreSQL) ----
+.pgsql/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
