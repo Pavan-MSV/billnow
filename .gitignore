@@ -15,8 +15,9 @@ venv/
 .ruff_cache/
 htmlcov/
 .coverage
-storage/
-backend/storage/
+# Storage uploads directory (ignore uploaded files, but keep app/services/storage source code)
+/backend/storage/
+!backend/app/services/storage/**
 
 # ---- Node / frontend ----
 node_modules/
