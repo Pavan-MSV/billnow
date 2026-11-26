@@ -2,7 +2,7 @@
 
 > **“Never Forget a Warranty Again.”**
 
-BillNow is a **mobile-first, app-style web application** built to track product purchases, organize invoices, monitor warranty expirations, and record service histories. The entire user experience is crafted to feel like a native Android/iOS mobile application with touch-friendly controls, bottom navigation, and clean phone dimensions (`max-w-[440px]`).
+BillNow is a **mobile-first, app-style web application** built to track product purchases, organize invoices, monitor warranty expirations, and record service histories. The entire user experience is crafted to look and feel like a native Android/iOS mobile application with touch-friendly controls, bottom navigation, mobile OTP verification, and clean phone dimensions (`max-w-[440px]`).
 
 ---
 
@@ -17,10 +17,12 @@ BillNow is a **mobile-first, app-style web application** built to track product 
   - [Step 1: Database Setup & Startup](#step-1-database-setup--startup)
   - [Step 2: Backend Setup & Startup](#step-2-backend-setup--startup)
   - [Step 3: Frontend Setup & Startup](#step-3-frontend-setup--startup)
-- [7. Demo Account Credentials](#7-demo-account-credentials)
+- [7. Mobile & Email OTP Verification System](#7-mobile--email-otp-verification-system)
 - [8. Testing & Validation Commands](#8-testing--validation-commands)
 - [9. Directory Structure](#9-directory-structure)
 - [10. REST API Reference](#10-rest-api-reference)
+- [11. 100% Free Cloud Deployment Guide (Vercel + Render + Neon)](#11-100-free-cloud-deployment-guide)
+- [12. Mobile Application Conversion Guide (Android APK & iOS)](#12-mobile-application-conversion-guide)
 
 ---
 
@@ -28,7 +30,8 @@ BillNow is a **mobile-first, app-style web application** built to track product 
 
 - **Mobile Viewport Target:** Designed primarily for modern mobile screens (360×800, 375×812, 390×844, 412×915).
 - **Desktop Adaptation:** Centered in clean phone dimensions (`max-w-[440px]`, full viewport height `min-h-dvh`), with no fake hardware bezels or mock status bars.
-- **Data Persistence:** Real PostgreSQL relational database via SQLAlchemy ORM. All products, invoices, and service records are persistently stored and isolated per user.
+- **Data Persistence:** Relational PostgreSQL database via SQLAlchemy ORM & Alembic migrations (cloud-hosted on Neon.tech with local fallback).
+- **Authentication & Verification:** Secure JWT access/refresh token architecture with 2-step mobile and email OTP verification.
 - **PWA-Ready:** Progressive Web App manifest (`manifest.webmanifest`) and service worker (`sw.js`) supporting installability and offline caching.
 
 ---
@@ -41,27 +44,30 @@ BillNow is a **mobile-first, app-style web application** built to track product 
 - **Smart Navigation:** Auto-transitions after 2.5s directly to `/dashboard` (if already logged in) or `/login` (if unauthenticated).
 - **Skip Action:** One-tap "Skip" button for immediate entry.
 
-### 🔐 Authentication Flow
-- **JWT Architecture:** Secure HTTP access and refresh tokens.
-- **User Isolation:** Users strictly see only their own products, invoices, service records, and alerts.
-- **Demo Quick-Login:** 1-tap "Quick Demo Login (Pavan Kumar)" button on the login screen for instant evaluation.
-- **Registration Screen:** Full name, email, password, and password confirmation with client-side and server-side validation.
+### 🔐 Authentication & Dual OTP Verification
+- **JWT Architecture:** Secure HTTP access and refresh tokens with password hashing via bcrypt.
+- **User Isolation:** Users strictly access only their own products, invoices, service records, and alerts.
+- **2-Step Registration Flow:**
+  - *Step 1:* User enters Full Name, Email, Mobile Number, and Password.
+  - *Step 2:* 6-digit verification code is dispatched to both Email and Mobile.
+  - User enters the OTP code, verifies their identity, and their account is created with their verified mobile number stored permanently.
+- **Dynamic Mobile Number Storage:** The registered user's phone number is saved to the database and displayed accurately in their Account profile (no hardcoded fallback numbers).
 
 ### 🏠 Home / Dashboard (`/dashboard`)
-- **Header:** Personalized greeting (`Hello, Pavan 👋`), small BillNow logo mark, notification bell with unread badge, and profile avatar.
+- **Header:** Personalized greeting (`Hello, {User} 👋`), small BillNow logo mark, notification bell with unread badge, and profile avatar.
 - **Warranty Summary Grid:** 4 compact cards:
-  - **Total Products** (e.g. 7)
-  - **Active Warranties** (e.g. 5)
-  - **Expiring Soon** (e.g. 1)
-  - **Expired** (e.g. 1)
+  - **Total Products**
+  - **Active Warranties**
+  - **Expiring Soon**
+  - **Expired**
 - **Warranty Alerts Section:** High-priority cards:
-  - ⚠️ *Expiring Soon:* Highlight card (e.g. Samsung Refrigerator — 18 days left) with a direct "View" button.
-  - ✓ *Active Highlights:* Cards showing remaining warranty periods (e.g. LG Washing Machine — 10 months).
+  - ⚠️ *Expiring Soon:* Highlights items with approaching warranty expiration with direct "View" actions.
+  - ✓ *Active Highlights:* Cards showing remaining warranty periods with visual indicators.
 - **My Products Feed:** Compact, touch-friendly product cards displaying category icon, brand, model, purchase date, status badge, and days left.
 - **Floating Action Button (FAB):** Fixed `+ Add Product` button for quick access.
 
 ### 📦 Product Management & Details (`/products`, `/products/:id`)
-- **13 Recognized Categories with Icons:**
+- **13 Recognized Categories with Custom Icons:**
   - 📱 Mobile, 💻 Laptop, 📺 Television, ❄️ Refrigerator, 🌀 Washing Machine, 💨 Air Conditioner, 🍲 Microwave, 🛋️ Furniture, 🍳 Kitchen Appliances, 🏠 Home Appliances, ⚡ Electronics, 🚗 Vehicle, 📦 Other.
 - **Add Product Form (`/products/add`):**
   - Product Information: Name, Category picker grid, Brand, Model number, Serial number.
@@ -85,9 +91,9 @@ BillNow is a **mobile-first, app-style web application** built to track product 
 - "Mark All as Read" action and dynamic unread badge count on the bottom navigation.
 
 ### 👤 Account & Settings (`/settings`)
-- User Profile Card with avatar, name, email, and member since date.
+- User Profile Card with avatar, name, email, and live registered mobile number.
 - **My BillNow Statistics Grid:** Quick counts for products, invoices, active warranties, and expired items.
-- **Personal Information Modal:** Update full name, email, and phone number.
+- **Personal Information Modal:** Update full name, email, and mobile number.
 - **Change Password Modal:** Secure current and new password validation.
 - **Appearance:** 1-tap Dark Mode / Light Mode toggle with smooth theme transition and local storage persistence.
 - **Notification Settings Modal:** Toggle warranty expiry reminders, service alerts, and adjust notification threshold days.
@@ -113,9 +119,10 @@ BillNow is a **mobile-first, app-style web application** built to track product 
 │ - Tailwind CSS Styling       │ - SQLAlchemy 2.0 ORM         │
 │ - Lucide Icons               │ - Alembic Migrations         │
 │ - Context-Based State        │ - JWT Auth & Password Hashing│
+│ - 2-Step OTP UI              │ - Email & Mobile OTP Service │
 ├──────────────────────────────┴──────────────────────────────┤
 │                         Storage                             │
-│ - PostgreSQL 16 (Relational DB)                             │
+│ - Neon Serverless PostgreSQL 16 (Relational DB)             │
 │ - Local Secure Filesystem Storage (Invoices)                │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -124,14 +131,15 @@ BillNow is a **mobile-first, app-style web application** built to track product 
 |---|---|
 | **Frontend** | React 18, TypeScript 5.6, Vite 6, Tailwind CSS 3.4, Lucide React, Axios, React Router DOM 6 |
 | **Backend** | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, PyJWT, Passlib (bcrypt) |
-| **Database** | PostgreSQL 16 (Embedded `.pgsql` provided or External PostgreSQL) |
+| **Database** | PostgreSQL 16 (Cloud Neon Serverless or Local Embedded `.pgsql`) |
+| **Mobile App Shell** | Capacitor (Android APK & iOS IPA) / PWA / TWA |
 | **Invoice Storage** | Secure local filesystem (`backend/storage`) with MIME & size validation |
 
 ---
 
 ## 4. Database Schema
 
-The database consists of 6 primary relational tables:
+The database consists of 6 primary relational tables with full Alembic migration history (`0001_initial_schema.py` and `0002_add_phone.py`):
 
 ```mermaid
 erDiagram
@@ -146,8 +154,8 @@ erDiagram
         uuid id PK
         string name
         string email UK
-        string password_hash
         string phone
+        string password_hash
         string profile_image
         datetime created_at
         datetime updated_at
@@ -221,45 +229,36 @@ erDiagram
 Before running the application, ensure the following are installed:
 1. **Node.js:** v18.0.0 or higher ([Download Node.js](https://nodejs.org/))
 2. **Python:** v3.10, v3.11, or v3.12 ([Download Python](https://www.python.org/))
-3. **PostgreSQL:**
-   - Either use the embedded PostgreSQL package included in `.pgsql/` (requires Java 17+ for the initial launcher, or the extracted binary `postgres.exe` in `.pgsql/pg/bin/`)
-   - OR use an existing local PostgreSQL 14+ server.
+3. **Database:**
+   - Either your cloud PostgreSQL connection string (e.g., Neon.tech)
+   - OR the included embedded PostgreSQL package in `.pgsql/` (port 5432).
 
 ---
 
 ## 6. Complete Step-by-Step Run Commands
 
-Follow these exact steps to start the complete application:
+Follow these exact steps to run the application locally:
 
 ### Step 1: Database Setup & Startup
 
-#### Option A: Using the Included Embedded PostgreSQL (Port 5432)
-In a **PowerShell** terminal at the project root (`d:\billnow`):
-
-```powershell
-# Start the PostgreSQL service using the bundled data directory
-& "d:\billnow\.pgsql\pg\bin\postgres.exe" -D "d:\billnow\.pgsql\data"
+#### Option A: Using Cloud PostgreSQL (Neon.tech - Recommended)
+Configure your `DATABASE_URL` in `backend/.env`:
+```env
+DATABASE_URL=postgresql+psycopg2://<user>:<password>@<host>/neondb?sslmode=require
 ```
-*(Leave this terminal running)*
 
-> **Alternative (Background via pg_ctl):**
-> ```powershell
-> & "d:\billnow\.pgsql\pg\bin\pg_ctl.exe" -D "d:\billnow\.pgsql\data" -l "d:\billnow\.pgsql\pg.log" start
-> ```
-
-#### Option B: Using an Existing Local PostgreSQL Server
-Ensure PostgreSQL is running on port `5432` with a database named `billnow`:
-```sql
-CREATE DATABASE billnow;
+#### Option B: Using the Included Embedded PostgreSQL (Port 5432)
+In a **PowerShell** terminal at `d:\billnow`:
+```powershell
+& "d:\billnow\.pgsql\pg\bin\postgres.exe" -D "d:\billnow\.pgsql\data"
 ```
 
 ---
 
 ### Step 2: Backend Setup & Startup
 
-Open a **new terminal** and navigate to `backend`:
+Open a **PowerShell** terminal and navigate to `backend`:
 
-#### On Windows (PowerShell):
 ```powershell
 cd d:\billnow\backend
 
@@ -273,34 +272,15 @@ python -m venv .venv
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# 4. Verify/configure environment file
-# (backend/.env is pre-configured with DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/billnow)
-
-# 5. Run database migrations to create all tables
+# 4. Run database migrations to apply latest schema (including phone column)
 alembic upgrade head
 
-# 6. Seed demo user and sample products (Pavan Kumar, Samsung Fridge, LG Washing Machine, etc.)
-python -m app.seed
-
-# 7. Start the FastAPI backend server
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+# 5. Start the FastAPI backend server
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-#### On Linux / macOS (Bash):
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-alembic upgrade head
-python -m app.seed
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
-```
-
-- Backend API will be live at: **`http://127.0.0.1:8000`**
+- Backend API: **`http://127.0.0.1:8000`**
 - Interactive Swagger API Documentation: **`http://127.0.0.1:8000/docs`**
-- Health Check: **`http://127.0.0.1:8000/health`**
 
 ---
 
@@ -308,8 +288,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 Open a **new terminal** and navigate to `frontend`:
 
-#### On Windows (PowerShell) / Linux / macOS:
-```bash
+```powershell
 cd d:\billnow\frontend
 
 # 1. Install Node dependencies
@@ -319,29 +298,54 @@ npm install
 npm run dev
 ```
 
-- Vite will run the frontend at: **`http://localhost:5173`**
 - Open **`http://localhost:5173`** in your browser.
 
 #### Building Frontend for Production:
-```bash
+```powershell
 npm run build
 ```
 *(Produces optimized static assets in `frontend/dist/`)*
 
 ---
 
-## 7. Demo Account Credentials
+## 7. Mobile & Email OTP Verification System
 
-A pre-configured demo account with rich data is ready for immediate testing:
+BillNow includes a complete OTP authentication flow:
 
-| Field | Value |
-|---|---|
-| **Email** | `demo@billnow.app` |
-| **Password** | `Demo1234` |
-| **User Name** | Pavan Kumar |
-| **Pre-seeded Products** | Samsung Refrigerator (Expiring in ~18 days)<br>LG Washing Machine (Active — 10 months remaining)<br>Samsung 55" 4K Smart TV<br>Dell XPS 13 Laptop<br>Sony WH-1000XM5 Headphones<br>LG Dual Inverter Air Conditioner |
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Registration & Verification Flow            │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                    Enter Name, Email,
+                    Mobile & Password
+                              │
+                              ▼
+                   POST /api/auth/send-otp
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+       Dispatches Email                Dispatches Mobile
+          OTP Message                     SMS Notice
+              └───────────────┬───────────────┘
+                              │
+                              ▼
+                     User Enters 6-Digit
+                      Verification Code
+                              │
+                              ▼
+                  POST /api/auth/register
+                (with verified OTP & Phone)
+                              │
+                              ▼
+                User Created with Saved Phone
+                 & JWT Tokens Issued to App
+```
 
-> **Quick Access:** You can also click the **"Quick Demo Login (Pavan Kumar)"** button on the `/login` screen to sign in with one tap.
+1. **Send OTP (`POST /api/auth/send-otp`):** Generates a secure 6-digit numeric code valid for 10 minutes, checks for existing accounts, sends an email verification code, and logs mobile SMS delivery.
+2. **Verify & Register (`POST /api/auth/register`):** Validates the entered code, creates the user account with the verified `phone` and `email`, and logs the user in immediately.
+3. **Resend Cooldown:** 30-second countdown timer on the frontend prevents spamming verification requests.
+4. **Permanent Phone Storage:** Once registered, the user's actual phone number is displayed across their profile and can be edited anytime under Settings.
 
 ---
 
@@ -369,28 +373,35 @@ npm run build   # runs tsc -b && vite build
 
 ```
 d:\billnow\
-├── .pgsql\                          # Embedded PostgreSQL 16 runtime and database files
-│   ├── bin\                         # postgres.exe, pg_ctl.exe, etc.
-│   └── data\                        # Database cluster directory
+├── .gitignore                       # Git exclusions (uploads, pycache, dist, etc.)
+├── APP_CREATION_STEPS.txt           # Mobile App & APK conversion guide
+├── README.md                        # Documentation & setup instructions
+├── .pgsql\                          # Embedded PostgreSQL runtime
 ├── backend\                         # FastAPI Python Backend
-│   ├── alembic\                     # Database migration revisions
+│   ├── alembic\                     # Database migrations
+│   │   └── versions\
+│   │       ├── 0001_initial_schema.py
+│   │       └── 0002_add_phone.py    # Phone column migration
 │   ├── app\
-│   │   ├── api\v1\                  # REST API endpoints (auth, products, invoices, etc.)
+│   │   ├── api\routes\              # REST API endpoints (auth, products, invoices, etc.)
 │   │   ├── core\                    # Config, security, JWT, rate limiting, logging
 │   │   ├── db\                      # Database connection and session management
 │   │   ├── models\                  # SQLAlchemy ORM models (User, Product, Invoice, etc.)
-│   │   ├── schemas\                 # Pydantic request/response schemas
-│   │   ├── services\                # Business logic (storage, notifications, export)
+│   │   ├── schemas\                 # Pydantic schemas (auth, user, product, etc.)
+│   │   ├── services\                # Storage, email, notifications
+│   │   │   └── storage\             # Multi-backend storage service (local, s3, etc.)
 │   │   ├── main.py                  # FastAPI application entry point
-│   │   └── seed.py                  # Seed script for demo data
-│   ├── storage\                     # Private local storage for user invoice files
+│   │   └── seed.py                  # Database synchronization script
+│   ├── storage\                     # Local private storage for invoices
 │   ├── tests\                       # Pytest test suite (63 tests)
 │   ├── .env                         # Backend environment variables
+│   ├── Procfile                     # Cloud process runner
 │   └── requirements.txt             # Python dependencies
 ├── frontend\                        # React + TypeScript + Vite Frontend
 │   ├── public\
 │   │   ├── manifest.webmanifest     # PWA manifest
-│   │   └── sw.js                    # PWA service worker
+│   │   ├── sw.js                    # PWA service worker
+│   │   └── _redirects               # Netlify/Cloudflare SPA redirects
 │   ├── src\
 │   │   ├── components\
 │   │   │   ├── layout\              # AppLayout, AuthLayout, BottomNav
@@ -402,23 +413,26 @@ d:\billnow\
 │   │   ├── pages\                   # Splash, Login, Register, Dashboard, Products, etc.
 │   │   ├── App.tsx                  # React Router configuration
 │   │   ├── main.tsx                 # App mount & context providers
+│   │   ├── types.ts                 # TypeScript data models
 │   │   └── index.css                # Tailwind base styles and mobile utility classes
 │   ├── package.json
 │   ├── tailwind.config.js           # Custom theme colors and splash keyframes
+│   ├── vercel.json                  # Vercel SPA rewrite rules
 │   └── vite.config.ts
-└── README.md                        # Documentation
 ```
 
 ---
 
 ## 10. REST API Reference
 
-All API routes are prefixed with `/api/v1`:
+All API routes are prefixed with `/api`:
 
-### Authentication (`/auth`)
+### Authentication & Verification (`/auth`)
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/auth/register` | Register a new user |
+| `POST` | `/auth/send-otp` | Generate and dispatch 6-digit verification code to email & mobile |
+| `POST` | `/auth/verify-otp` | Validate verification code |
+| `POST` | `/auth/register` | Register a new user with verified phone & email |
 | `POST` | `/auth/login` | Login with email & password, returns JWT tokens |
 | `POST` | `/auth/refresh` | Refresh access token using refresh token |
 | `POST` | `/auth/logout` | Invalidate current session |
@@ -455,14 +469,14 @@ All API routes are prefixed with `/api/v1`:
 | `PATCH` | `/notifications/{id}/read` | Mark a specific notification as read |
 | `POST` | `/notifications/mark-all-read` | Mark all user notifications as read |
 
-### User Profile & Settings (`/users`)
+### User Profile & Settings (`/settings`)
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/users/me` | Fetch authenticated user profile |
-| `PATCH` | `/users/me` | Update name, email, or phone number |
-| `POST` | `/users/change-password` | Change password with current password confirmation |
-| `GET` | `/users/export` | Export all user data as JSON |
-| `DELETE` | `/users/me` | Permanently delete user account |
+| `GET` | `/settings/profile` | Fetch authenticated user profile |
+| `PUT` | `/settings/profile` | Update name, email, or mobile number |
+| `POST` | `/settings/change-password` | Change password with current password confirmation |
+| `GET` | `/settings/export` | Export all user data as JSON |
+| `DELETE` | `/settings/me` | Permanently delete user account |
 
 ---
 
@@ -477,54 +491,72 @@ You can deploy the complete BillNow application to the cloud for free with zero 
 │ Frontend (SPA)  │ Backend API             │ Database        │
 │ Vercel          │ Render.com              │ Neon.tech       │
 │ Free Forever    │ Free Web Service        │ Free Serverless │
-│ Global Edge CDN │ Python 3 / FastAPI      │ PostgreSQL 16   │
+│ Global Edge CDN │ Python 3.12 / FastAPI   │ PostgreSQL 16   │
 └─────────────────┴─────────────────────────┴─────────────────┘
 ```
 
 ### Step 1: Push Code to a GitHub Repository
-1. In your local terminal at `D:\billnow`:
-   ```bash
-   git init
-   git add .
-   git commit -m "feat: initial BillNow mobile-first application"
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/billnow.git
-   git push -u origin main
-   ```
+```bash
+git add .
+git commit -m "feat: complete BillNow mobile-first application"
+git push origin main
+```
 
-### Step 2: Create a Free PostgreSQL Database (Neon.tech)
-1. Sign up for free at [neon.tech](https://neon.tech) (using GitHub).
-2. Click **Create Project**, name it `billnow`, and select the region closest to you.
-3. Copy the generated connection string (e.g., `postgresql://user:password@ep-xyz.aws.neon.tech/neondb?sslmode=require`).
+### Step 2: Database (Neon.tech)
+Your live database is connected and active:
+```
+postgresql+psycopg2://neondb_owner:npg_2WuNjZeOQkv1@ep-calm-thunder-bdf3mlwp-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require
+```
 
 ### Step 3: Deploy Backend (Render.com)
 1. Sign up for free at [render.com](https://render.com) using your GitHub account.
-2. Click **New +** → **Web Service**.
-3. Connect your `billnow` GitHub repository.
-4. Configure the Web Service settings:
+2. Click **New +** → **Web Service** and select `Pavan-MSV/billnow`.
+3. Configure settings:
    - **Root Directory:** `backend`
    - **Environment:** `Python 3`
-   - **Build Command:** `pip install -r requirements.txt && alembic upgrade head && python -m app.seed`
+   - **Build Command:** `pip install -r requirements.txt && alembic upgrade head`
    - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
    - **Instance Type:** `Free`
-5. Under **Environment Variables**, add:
-   - `DATABASE_URL`: *(Your Neon PostgreSQL connection string from Step 2)*
-   - `JWT_SECRET`: *(A long random secret string)*
+4. Add **Environment Variables**:
+   - `DATABASE_URL`: *(Your Neon PostgreSQL connection string)*
+   - `JWT_SECRET`: `billnow-super-secret-jwt-key-production-2026`
    - `ENVIRONMENT`: `production`
-   - `CORS_ORIGINS`: `*` *(or your Vercel URL)*
-6. Click **Deploy Web Service**.
-7. Once deployed, copy your backend URL (e.g. `https://billnow-backend.onrender.com`).
+   - `CORS_ORIGINS`: `*`
+   - `PYTHON_VERSION`: `3.12.0`
+5. Click **Deploy Web Service** and copy your backend URL (`https://billnow-backend.onrender.com`).
 
 ### Step 4: Deploy Frontend (Vercel)
 1. Sign up for free at [vercel.com](https://vercel.com) using your GitHub account.
-2. Click **Add New...** → **Project** and import your `billnow` repository.
-3. Configure the project settings:
+2. Click **Add New...** → **Project** and import `Pavan-MSV/billnow`.
+3. Configure settings:
    - **Framework Preset:** `Vite`
-   - **Root Directory:** Click `Edit` and select `frontend`
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-4. Under **Environment Variables**, add:
-   - `VITE_API_URL`: *(Your Render backend URL from Step 3, e.g. `https://billnow-backend.onrender.com`)*
+   - **Root Directory:** `frontend`
+4. Add **Environment Variable**:
+   - `VITE_API_URL`: `https://billnow-backend.onrender.com`
 5. Click **Deploy**.
-6. Vercel will deploy your site globally with a free SSL domain (e.g., `https://billnow.vercel.app`).
 
+---
+
+## 12. Mobile Application Conversion Guide
+
+BillNow can be packaged directly into a native Android `.apk` or iOS app in minutes:
+
+### Fast Command Line (Capacitor):
+```powershell
+cd d:\billnow\frontend
+npm install @capacitor/core @capacitor/cli @capacitor/android
+npx cap init "BillNow" "com.billnow.app" --web-dir "dist"
+npx cap add android
+npm run build
+npx cap sync
+npx cap open android
+```
+In Android Studio: Click **Build** → **Build Bundle(s) / APK(s)** → **Build APK(s)** to generate your installable APK!
+
+### Fast Online Conversion (No Android Studio Needed):
+1. Open [pwabuilder.com](https://www.pwabuilder.com).
+2. Enter your live Vercel URL (e.g. `https://billnow.vercel.app`).
+3. Click **Package for Stores** → **Android / Google Play** → **Generate Package**.
+4. Download the `.zip` file containing your ready-to-install `.apk` and Play Store `.aab` files.
+
+*(For detailed Play Store publishing guidelines, see [APP_CREATION_STEPS.txt](file:///d:/billnow/APP_CREATION_STEPS.txt))*
