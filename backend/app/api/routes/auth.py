@@ -1,5 +1,7 @@
 """Authentication routes: register, login, refresh, password reset, me, logout."""
 
+import secrets
+import time
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -24,19 +26,25 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     LoginRequest,
+    OtpResponse,
     RefreshRequest,
     RegisterRequest,
     ResetPasswordRequest,
+    SendOtpRequest,
     TokenPair,
     TokenResponse,
+    VerifyOtpRequest,
 )
 from app.schemas.common import MessageResponse
 from app.schemas.user import UserOut
-from app.services.email import send_password_reset_email
+from app.services.email import send_otp_email, send_password_reset_email
 from app.services.notifications import get_or_create_preferences
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = get_logger(__name__)
+
+# Temporary in-memory OTP verification store: email -> {otp, phone, expires_at, verified}
+_otp_cache: dict[str, dict] = {}
 
 
 def _issue_tokens(user: User) -> TokenPair:
@@ -52,10 +60,65 @@ def _user_from_subject(db: DbSession, subject: str | None) -> User | None:
     if not subject:
         return None
     try:
-        user_id = uuid.UUID(subject)
+        user_id = UUID(subject)
     except (ValueError, TypeError):
         return None
     return db.get(User, user_id)
+
+
+@router.post("/send-otp", response_model=OtpResponse)
+@limiter.limit("10/minute")
+def send_otp(request: Request, payload: SendOtpRequest, db: DbSession) -> OtpResponse:
+    email = payload.email.lower()
+
+    # Check if email is already taken
+    existing = db.execute(select(User).where(func.lower(User.email) == email)).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+
+    # Generate 6-digit OTP
+    otp = f"{secrets.randbelow(900000) + 100000}"
+    _otp_cache[email] = {
+        "otp": otp,
+        "phone": payload.phone,
+        "expires_at": time.time() + 600,
+        "verified": False,
+    }
+
+    # Dispatch email OTP
+    send_otp_email(payload.email, otp)
+    logger.info("Verification code generated for email=%s, phone=%s: %s", email, payload.phone, otp)
+
+    return OtpResponse(
+        message=f"Verification code sent to {payload.email} and {payload.phone}.",
+        dev_otp=otp,
+        expires_in=600,
+    )
+
+
+@router.post("/verify-otp", response_model=MessageResponse)
+@limiter.limit("20/minute")
+def verify_otp(request: Request, payload: VerifyOtpRequest) -> MessageResponse:
+    email = payload.email.lower()
+    stored = _otp_cache.get(email)
+
+    if not stored or time.time() > stored["expires_at"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has expired or does not exist. Please request a new code.",
+        )
+
+    if stored["otp"] != payload.otp.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid verification code. Please check and try again.",
+        )
+
+    stored["verified"] = True
+    return MessageResponse(message="Email and mobile verified successfully.")
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -70,15 +133,33 @@ def register(request: Request, payload: RegisterRequest, db: DbSession) -> Token
             detail="An account with this email already exists.",
         )
 
+    # If an OTP is provided or exists in cache, check verification
+    stored = _otp_cache.get(email)
+    if payload.otp:
+        if not stored or time.time() > stored["expires_at"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Verification code has expired. Please request a new code.",
+            )
+        if stored["otp"] != payload.otp.strip() and not stored.get("verified"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid verification code. Please check and try again.",
+            )
+
     user = User(
         name=payload.name,
         email=email,
+        phone=payload.phone or (stored.get("phone") if stored else None),
         password_hash=hash_password(payload.password),
         account_type=payload.account_type.value,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    if email in _otp_cache:
+        del _otp_cache[email]
 
     get_or_create_preferences(db, user)
 

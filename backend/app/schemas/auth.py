@@ -7,9 +7,27 @@ from app.schemas.user import UserOut
 from app.schemas.validators import validate_password_strength
 
 
+class SendOtpRequest(BaseModel):
+    email: EmailStr
+    phone: str = Field(min_length=7, max_length=25)
+
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=4, max_length=8)
+
+
+class OtpResponse(BaseModel):
+    message: str
+    dev_otp: str | None = None
+    expires_in: int = 600
+
+
 class RegisterRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
+    phone: str | None = Field(default=None, max_length=30)
+    otp: str | None = None
     password: str
     account_type: AccountType = AccountType.personal
 

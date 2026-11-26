@@ -39,7 +39,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
 
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [phone, setPhone] = useState(() => localStorage.getItem('billnow_user_phone') || '+91 98765 43210');
+  const [phone, setPhone] = useState(() => user?.phone || localStorage.getItem('billnow_user_phone') || '');
 
   // Modals
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -52,7 +52,7 @@ export function SettingsPage() {
   // Edit Profile Form State
   const [editName, setEditName] = useState(user?.name ?? '');
   const [editEmail, setEditEmail] = useState(user?.email ?? '');
-  const [editPhone, setEditPhone] = useState(phone);
+  const [editPhone, setEditPhone] = useState(user?.phone ?? phone);
   const [editPhoto, setEditPhoto] = useState(user?.profile_image ?? '');
   const [savingProfile, setSavingProfile] = useState(false);
 
@@ -92,6 +92,8 @@ export function SettingsPage() {
     if (user) {
       setEditName(user.name);
       setEditEmail(user.email);
+      setEditPhone(user.phone || '');
+      setPhone(user.phone || localStorage.getItem('billnow_user_phone') || '');
       setEditPhoto(user.profile_image ?? '');
     }
   }, [user]);
@@ -107,9 +109,14 @@ export function SettingsPage() {
       const updated = await settingsApi.updateProfile({
         name: editName.trim(),
         email: editEmail.trim(),
+        phone: editPhone.trim() || null,
         profile_image: editPhoto.trim() || null,
       });
-      localStorage.setItem('billnow_user_phone', editPhone.trim());
+      if (editPhone.trim()) {
+        localStorage.setItem('billnow_user_phone', editPhone.trim());
+      } else {
+        localStorage.removeItem('billnow_user_phone');
+      }
       setPhone(editPhone.trim());
       updateLocalUser(updated);
       showToast({ variant: 'success', title: 'Profile updated' });
@@ -245,10 +252,21 @@ export function SettingsPage() {
             <p className="text-xs font-medium text-subtle truncate">
               {user?.email || 'pavan@example.com'}
             </p>
-            <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
-              <Phone className="h-3 w-3" />
-              <span>{phone}</span>
-            </p>
+            {phone ? (
+              <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                <span>{phone}</span>
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowEditProfile(true)}
+                className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 mt-0.5 flex items-center gap-1 hover:underline text-left"
+              >
+                <Phone className="h-3 w-3" />
+                <span>+ Add mobile number</span>
+              </button>
+            )}
           </div>
         </div>
 

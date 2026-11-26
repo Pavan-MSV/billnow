@@ -11,6 +11,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
   profile_image: string | null;
   account_type: string;
   currency: string;
@@ -227,6 +228,7 @@ export interface Insights {
 export interface ProfileUpdateInput {
   name?: string;
   email?: string;
+  phone?: string | null;
   profile_image?: string | null;
 }
 

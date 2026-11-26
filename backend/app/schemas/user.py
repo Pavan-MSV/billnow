@@ -14,6 +14,7 @@ class UserOut(BaseModel):
     id: uuid.UUID
     name: str
     email: EmailStr
+    phone: str | None = None
     profile_image: str | None = None
     account_type: str
     currency: str
@@ -25,6 +26,7 @@ class UserOut(BaseModel):
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=30)
     profile_image: str | None = Field(default=None, max_length=500)
 
     @field_validator("name")

@@ -210,6 +210,8 @@ export function getErrorMessage(
 export interface RegisterInput {
   name: string;
   email: string;
+  phone?: string;
+  otp?: string;
   password: string;
   account_type?: 'personal' | 'business';
 }
@@ -219,7 +221,27 @@ export interface LoginInput {
   password: string;
 }
 
+export interface SendOtpInput {
+  email: string;
+  phone: string;
+}
+
+export interface SendOtpResponse {
+  message: string;
+  dev_otp?: string;
+  expires_in: number;
+}
+
+export interface VerifyOtpInput {
+  email: string;
+  otp: string;
+}
+
 export const authApi = {
+  sendOtp: (payload: SendOtpInput) =>
+    api.post<SendOtpResponse>('/api/auth/send-otp', payload).then((r) => r.data),
+  verifyOtp: (payload: VerifyOtpInput) =>
+    api.post<MessageResponse>('/api/auth/verify-otp', payload).then((r) => r.data),
   register: (payload: RegisterInput) =>
     api.post<AuthResponse>('/api/auth/register', payload).then((r) => r.data),
   login: (payload: LoginInput) =>

@@ -54,12 +54,16 @@ def seed(force: bool = False) -> None:
             select(User).where(func.lower(User.email) == DEMO_EMAIL)
         ).scalar_one_or_none()
         if existing is not None:
-            print(f"Demo user {DEMO_EMAIL} already exists — nothing to do.")
+            if not existing.phone:
+                existing.phone = "+91 98765 43210"
+                db.commit()
+            print(f"Demo user {DEMO_EMAIL} already exists — updated phone.")
             return
 
         user = User(
             name="Pavan Kumar",
             email=DEMO_EMAIL,
+            phone="+91 98765 43210",
             password_hash=hash_password(DEMO_PASSWORD),
             account_type="personal",
             currency="INR",

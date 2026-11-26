@@ -49,3 +49,24 @@ def send_password_reset_email(to: str, reset_link: str) -> bool:
         "If you did not request this, you can safely ignore this email."
     )
     return send_email(to, subject, body)
+
+
+def send_otp_email(to: str, otp: str) -> bool:
+    subject = f"Your BillNow Verification Code: {otp}"
+    body = (
+        f"Hello,\n\n"
+        f"Your verification code for BillNow is: {otp}\n\n"
+        f"This code will expire in 10 minutes. Please enter it to complete your registration.\n\n"
+        f"If you did not request this, please disregard this email."
+    )
+    html = f"""
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <h2 style="color: #4f46e5; margin-bottom: 8px;">BillNow Verification</h2>
+        <p style="color: #475569; font-size: 14px;">Use the verification code below to verify your account:</p>
+        <div style="background: #f1f5f9; padding: 16px; border-radius: 12px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 6px; color: #1e293b; margin: 20px 0;">
+            {otp}
+        </div>
+        <p style="color: #64748b; font-size: 12px;">This code is valid for 10 minutes. Never share this code with anyone.</p>
+    </div>
+    """
+    return send_email(to, subject, body, html=html)
