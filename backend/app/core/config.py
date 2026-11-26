@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     # --- Database ---
     DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/billnow"
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
 
     # --- Auth / JWT ---
     JWT_SECRET: str = "dev-secret-change-me-in-production"

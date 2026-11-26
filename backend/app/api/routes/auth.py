@@ -43,8 +43,16 @@ from app.services.notifications import get_or_create_preferences
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = get_logger(__name__)
 
-# Temporary in-memory OTP verification store: email -> {otp, phone, expires_at, verified}
+# Temporary in-memory OTP verification store: email -> {otp, phone, expires_at, verified, attempts}
 _otp_cache: dict[str, dict] = {}
+
+
+def _cleanup_expired_otps() -> None:
+    """Prune expired OTP entries to prevent memory buildup."""
+    now = time.time()
+    expired = [email for email, data in _otp_cache.items() if now > data.get("expires_at", 0)]
+    for email in expired:
+        _otp_cache.pop(email, None)
 
 
 def _issue_tokens(user: User) -> TokenPair:
@@ -69,6 +77,7 @@ def _user_from_subject(db: DbSession, subject: str | None) -> User | None:
 @router.post("/send-otp", response_model=OtpResponse)
 @limiter.limit("10/minute")
 def send_otp(request: Request, payload: SendOtpRequest, db: DbSession) -> OtpResponse:
+    _cleanup_expired_otps()
     email = payload.email.lower()
 
     # Check if email is already taken
@@ -86,15 +95,16 @@ def send_otp(request: Request, payload: SendOtpRequest, db: DbSession) -> OtpRes
         "phone": payload.phone,
         "expires_at": time.time() + 600,
         "verified": False,
+        "attempts": 0,
     }
 
     # Dispatch email OTP
     send_otp_email(payload.email, otp)
-    logger.info("Verification code generated for email=%s, phone=%s: %s", email, payload.phone, otp)
+    logger.info("Verification code generated for email=%s, phone=%s", email, payload.phone)
 
     return OtpResponse(
         message=f"Verification code sent to {payload.email} and {payload.phone}.",
-        dev_otp=otp,
+        dev_otp=otp if not settings.is_production else None,
         expires_in=600,
     )
 
@@ -102,6 +112,7 @@ def send_otp(request: Request, payload: SendOtpRequest, db: DbSession) -> OtpRes
 @router.post("/verify-otp", response_model=MessageResponse)
 @limiter.limit("20/minute")
 def verify_otp(request: Request, payload: VerifyOtpRequest) -> MessageResponse:
+    _cleanup_expired_otps()
     email = payload.email.lower()
     stored = _otp_cache.get(email)
 
@@ -111,10 +122,25 @@ def verify_otp(request: Request, payload: VerifyOtpRequest) -> MessageResponse:
             detail="Verification code has expired or does not exist. Please request a new code.",
         )
 
+    if stored.get("attempts", 0) >= 3:
+        _otp_cache.pop(email, None)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many invalid attempts. This verification code has been revoked. Please request a new code.",
+        )
+
     if stored["otp"] != payload.otp.strip():
+        stored["attempts"] = stored.get("attempts", 0) + 1
+        remaining = 3 - stored["attempts"]
+        if remaining <= 0:
+            _otp_cache.pop(email, None)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many invalid attempts. This verification code has been revoked. Please request a new code.",
+            )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid verification code. Please check and try again.",
+            detail=f"Invalid verification code. {remaining} attempt(s) remaining.",
         )
 
     stored["verified"] = True

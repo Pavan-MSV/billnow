@@ -123,3 +123,61 @@ def test_change_password(client, user_token):
         headers=headers,
     )
     assert ok.status_code == 200
+
+
+def test_otp_flow_and_attempt_limit(client):
+    email = "otp-limit-test@example.com"
+    phone = "+919876543210"
+
+    # Send OTP
+    send_resp = client.post("/api/auth/send-otp", json={"email": email, "phone": phone})
+    assert send_resp.status_code == 200
+    otp = send_resp.json().get("dev_otp")
+    assert otp is not None
+
+    # Invalid attempt 1: 400 with 2 remaining
+    bad1 = client.post("/api/auth/verify-otp", json={"email": email, "otp": "000000"})
+    assert bad1.status_code == 400
+    assert "2 attempt(s) remaining" in bad1.json()["detail"]
+
+    # Invalid attempt 2: 400 with 1 remaining
+    bad2 = client.post("/api/auth/verify-otp", json={"email": email, "otp": "000001"})
+    assert bad2.status_code == 400
+    assert "1 attempt(s) remaining" in bad2.json()["detail"]
+
+    # Invalid attempt 3: 429 Too Many Requests (revoked)
+    bad3 = client.post("/api/auth/verify-otp", json={"email": email, "otp": "000002"})
+    assert bad3.status_code == 429
+    assert "revoked" in bad3.json()["detail"]
+
+    # Subsequent attempt with even the right OTP fails because it was revoked
+    bad_after = client.post("/api/auth/verify-otp", json={"email": email, "otp": otp})
+    assert bad_after.status_code == 400
+
+
+def test_health_check_probes_database(client):
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["database"] == "connected"
+
+
+def test_security_headers_present(client):
+    response = client.get("/api/health")
+    headers = response.headers
+    assert headers["x-content-type-options"] == "nosniff"
+    assert headers["x-frame-options"] == "DENY"
+    assert headers["x-xss-protection"] == "1; mode=block"
+    assert headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert "camera=()" in headers["permissions-policy"]
+    assert "default-src 'self'" in headers["content-security-policy"]
+
+
+def test_register_rejects_overlong_password(client):
+    overlong = "P" * 75 + "1a"
+    response = client.post(
+        "/api/auth/register",
+        json={"name": "A", "email": "overlong@example.com", "password": overlong},
+    )
+    assert response.status_code == 422
