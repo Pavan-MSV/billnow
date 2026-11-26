@@ -59,7 +59,7 @@ export function DashboardPage() {
   const expiringAlerts = products.filter((p) => p.warranty_status === 'expiring_soon');
   const activeAlerts = products.filter((p) => p.warranty_status === 'active').slice(0, 2);
 
-  const firstName = user?.name ? user.name.split(' ')[0] : 'Pavan';
+  const firstName = user?.name ? user.name.split(' ')[0] : 'there';
 
   return (
     <div className="space-y-5 pb-6">

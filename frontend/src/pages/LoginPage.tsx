@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Mail, Sparkles } from 'lucide-react';
+import { Mail } from 'lucide-react';
 
 import { getErrorMessage } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -48,22 +48,6 @@ export function LoginPage() {
       navigate(from, { replace: true });
     } catch (error) {
       setFormError(getErrorMessage(error, 'Invalid email or password. Please try again.'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setEmail('demo@billnow.app');
-    setPassword('Demo1234');
-    setSubmitting(true);
-    setFormError('');
-    try {
-      await login({ email: 'demo@billnow.app', password: 'Demo1234' });
-      showToast({ variant: 'success', title: 'Welcome, Pavan!', message: 'Signed in with demo account.' });
-      navigate(from, { replace: true });
-    } catch (error) {
-      setFormError(getErrorMessage(error, 'Unable to sign in with demo account.'));
     } finally {
       setSubmitting(false);
     }
@@ -120,17 +104,6 @@ export function LoginPage() {
         <Button type="submit" size="lg" fullWidth loading={submitting} className="h-12 text-sm font-bold shadow-md">
           Login
         </Button>
-
-        {/* Quick Demo Login Button */}
-        <button
-          type="button"
-          onClick={handleDemoLogin}
-          disabled={submitting}
-          className="w-full flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50/70 p-2.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-300"
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Quick 1-Tap Demo (Pavan Kumar)</span>
-        </button>
       </form>
     </AuthLayout>
   );

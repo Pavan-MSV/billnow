@@ -40,13 +40,17 @@ def _months_ago(months: int) -> date:
     return date(year, month, day)
 
 
-def seed(force: bool = False) -> None:
+def seed(force: bool = False, create_demo: bool = False) -> None:
     if settings.is_production and not force:
         print("Refusing to seed a production environment. Re-run with --force to override.")
         sys.exit(1)
 
     configure_logging()
     Base.metadata.create_all(bind=engine)
+
+    if not create_demo:
+        print("Database schema synchronized. Demo account creation disabled.")
+        return
 
     db = SessionLocal()
     try:
@@ -206,5 +210,6 @@ def _add_months(start: date, months: int) -> date:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed BillNow development data")
     parser.add_argument("--force", action="store_true", help="Allow running in production")
+    parser.add_argument("--demo", action="store_true", help="Explicitly create demo account")
     args = parser.parse_args()
-    seed(force=args.force)
+    seed(force=args.force, create_demo=args.demo)

@@ -167,7 +167,7 @@ export function SettingsPage() {
   const handleToggleTheme = () => {
     const nextTheme: ThemePreference = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
-    void settingsApi.updatePreferences({ theme: nextTheme }).catch(() => {});
+    void settingsApi.updatePreferences({ theme: nextTheme }).catch(() => { });
   };
 
   const handleUpdateNotifPref = async (key: keyof NotificationPreferences, value: boolean) => {
@@ -242,15 +242,15 @@ export function SettingsPage() {
         <div className="flex items-center gap-3.5 min-w-0">
           {/* Avatar */}
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 font-extrabold text-xl text-white shadow-md">
-            {user?.name ? user.name.slice(0, 1).toUpperCase() : 'P'}
+            {user?.name ? user.name.slice(0, 1).toUpperCase() : <UserIcon className="h-6 w-6" />}
           </div>
 
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-extrabold text-ink truncate">
-              {user?.name || 'Pavan Kumar'}
+              {user?.name || 'Account'}
             </h2>
             <p className="text-xs font-medium text-subtle truncate">
-              {user?.email || 'pavan@example.com'}
+              {user?.email || ''}
             </p>
             {phone ? (
               <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
