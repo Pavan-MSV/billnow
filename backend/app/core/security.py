@@ -8,7 +8,7 @@ import jwt
 
 from app.core.config import settings
 
-TokenType = Literal["access", "refresh", "reset"]
+TokenType = Literal["access", "refresh", "reset", "deletion"]
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +61,10 @@ def create_refresh_token(subject: str, token_version: int = 0) -> str:
 
 def create_password_reset_token(subject: str) -> str:
     return _encode(subject, "reset", timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES))
+
+
+def create_account_deletion_token(subject: str) -> str:
+    return _encode(subject, "deletion", timedelta(minutes=30))
 
 
 def decode_token(token: str) -> dict[str, Any]:

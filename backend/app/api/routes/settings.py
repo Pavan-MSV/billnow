@@ -1,8 +1,10 @@
 """Profile, preferences, security and data-management routes."""
 
+import csv
+import io
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
@@ -13,7 +15,7 @@ from app.models.product import Product
 from app.models.user import User
 from app.schemas.auth import ChangePasswordRequest
 from app.schemas.common import MessageResponse
-from app.schemas.user import PreferencesUpdate, UserOut, UserUpdate
+from app.schemas.user import DeleteAccountRequest, PreferencesUpdate, UserOut, UserUpdate
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -78,10 +80,65 @@ def change_password(
 
 
 @router.get("/export")
-def export_data(current_user: CurrentUser, db: DbSession) -> JSONResponse:
+def export_data(
+    current_user: CurrentUser,
+    db: DbSession,
+    format: str = Query(default="json"),
+) -> Response:
     products = (
         db.execute(select(Product).where(Product.user_id == current_user.id)).scalars().all()
     )
+
+    if format.lower() == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                "Product ID",
+                "Product Name",
+                "Category",
+                "Brand",
+                "Model Number",
+                "Serial Number",
+                "Purchase Date",
+                "Purchase Price",
+                "Currency",
+                "Seller",
+                "Invoice Number",
+                "Warranty Start Date",
+                "Warranty Months",
+                "Warranty End Date",
+                "Notes",
+                "Total Service Records",
+            ]
+        )
+        for p in products:
+            writer.writerow(
+                [
+                    str(p.id),
+                    p.name,
+                    p.category,
+                    p.brand or "",
+                    p.model_number or "",
+                    p.serial_number or "",
+                    p.purchase_date.isoformat() if p.purchase_date else "",
+                    f"{float(p.purchase_price):.2f}" if p.purchase_price is not None else "",
+                    p.currency,
+                    p.seller or "",
+                    p.invoice_number or "",
+                    p.warranty_start_date.isoformat() if p.warranty_start_date else "",
+                    p.warranty_period_months or "",
+                    p.warranty_end_date.isoformat() if p.warranty_end_date else "",
+                    p.notes or "",
+                    len(p.service_records),
+                ]
+            )
+        return Response(
+            content=output.getvalue().encode("utf-8"),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="billnow-products.csv"'},
+        )
+
     notifications = (
         db.execute(select(Notification).where(Notification.user_id == current_user.id))
         .scalars()
@@ -145,7 +202,18 @@ def export_data(current_user: CurrentUser, db: DbSession) -> JSONResponse:
 
 
 @router.delete("/account", status_code=status.HTTP_204_NO_CONTENT)
-def delete_account(current_user: CurrentUser, db: DbSession) -> None:
+def delete_account(
+    current_user: CurrentUser,
+    db: DbSession,
+    payload: DeleteAccountRequest | None = None,
+) -> None:
+    if payload and payload.password:
+        if not verify_password(payload.password, current_user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Your current password is incorrect.",
+            )
+
     # Best-effort removal of stored invoice files before the cascade delete.
     products = (
         db.execute(select(Product).where(Product.user_id == current_user.id)).scalars().all()

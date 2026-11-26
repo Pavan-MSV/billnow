@@ -47,3 +47,7 @@ class PreferencesUpdate(BaseModel):
 
 class AccountTypeValue(BaseModel):
     value: AccountType
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str | None = None

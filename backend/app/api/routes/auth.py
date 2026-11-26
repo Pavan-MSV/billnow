@@ -5,6 +5,7 @@ import time
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy import func, select
 
 import jwt
@@ -15,12 +16,14 @@ from app.core.logging import get_logger
 from app.core.ratelimit import limiter
 from app.core.security import (
     create_access_token,
+    create_account_deletion_token,
     create_password_reset_token,
     create_refresh_token,
     decode_token,
     hash_password,
     verify_password,
 )
+from app.models.product import Product
 from app.models.user import User
 from app.schemas.auth import (
     ChangePasswordRequest,
@@ -37,8 +40,13 @@ from app.schemas.auth import (
 )
 from app.schemas.common import MessageResponse
 from app.schemas.user import UserOut
-from app.services.email import send_otp_email, send_password_reset_email
+from app.services.email import (
+    send_account_deletion_email,
+    send_otp_email,
+    send_password_reset_email,
+)
 from app.services.notifications import get_or_create_preferences
+from app.services.storage import get_storage
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = get_logger(__name__)
@@ -315,3 +323,70 @@ def change_password(
     current_user.token_version += 1
     db.commit()
     return MessageResponse(message="Password updated successfully.")
+
+
+class ConfirmDeletionRequest(BaseModel):
+    token: str
+
+
+@router.post("/request-account-deletion", response_model=MessageResponse)
+@limiter.limit("5/minute")
+def request_account_deletion(
+    request: Request, payload: ForgotPasswordRequest, db: DbSession
+) -> MessageResponse:
+    """Public account deletion request for Google Play Store compliance."""
+    email = payload.email.lower()
+    user = db.execute(select(User).where(func.lower(User.email) == email)).scalar_one_or_none()
+
+    if user is not None and user.is_active:
+        token = create_account_deletion_token(str(user.id))
+        confirm_link = f"{settings.FRONTEND_URL}/delete-account?token={token}"
+        send_account_deletion_email(user.email, confirm_link)
+        logger.info("Account deletion confirmation link generated for email=%s", email)
+
+    return MessageResponse(
+        message="If an account exists for that email, a deletion confirmation link has been sent."
+    )
+
+
+@router.post("/confirm-account-deletion", response_model=MessageResponse)
+@limiter.limit("5/minute")
+def confirm_account_deletion(
+    request: Request, payload: ConfirmDeletionRequest, db: DbSession
+) -> MessageResponse:
+    """Public confirmation endpoint completing account and data deletion."""
+    invalid = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="This account deletion link is invalid or has expired.",
+    )
+    try:
+        claims = decode_token(payload.token)
+    except jwt.PyJWTError as exc:
+        raise invalid from exc
+
+    if claims.get("type") != "deletion":
+        raise invalid
+
+    try:
+        user_id = UUID(str(claims.get("sub")))
+    except (ValueError, TypeError) as exc:
+        raise invalid from exc
+
+    user = db.get(User, user_id)
+    if user is None:
+        raise invalid
+
+    # Clean up invoice files from storage
+    products = db.execute(select(Product).where(Product.user_id == user.id)).scalars().all()
+    storage = get_storage()
+    for product in products:
+        if product.invoice is not None:
+            try:
+                storage.delete(product.invoice.storage_path)
+            except Exception:
+                pass
+
+    db.delete(user)
+    db.commit()
+    logger.info("Account %s successfully deleted via public confirmation link", user_id)
+    return MessageResponse(message="Your account and all associated data have been permanently deleted.")
