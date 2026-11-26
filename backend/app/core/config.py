@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = 10
     ALLOWED_UPLOAD_TYPES: str = "application/pdf,image/jpeg,image/png"
 
+    # --- Push Notifications / FCM ---
+    FCM_ENABLED: bool = False
+    FIREBASE_CREDENTIALS_PATH: str | None = None
+
     # --- Email ---
     EMAIL_ENABLED: bool = False
     SMTP_HOST: str | None = None

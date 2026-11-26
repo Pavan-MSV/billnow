@@ -1,6 +1,7 @@
 """Import all models so that Alembic / metadata sees every table."""
 
 from app.db.base import Base
+from app.models.device_token import DeviceToken
 from app.models.enums import AccountType, NotificationType, Theme, WarrantyStatus
 from app.models.invoice import Invoice
 from app.models.notification import Notification
@@ -17,6 +18,7 @@ __all__ = [
     "ServiceRecord",
     "Notification",
     "NotificationPreference",
+    "DeviceToken",
     "AccountType",
     "WarrantyStatus",
     "NotificationType",

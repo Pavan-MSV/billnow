@@ -130,3 +130,58 @@ def test_update_preferences_persists(client, user_token):
 
 def test_notifications_require_authentication(client):
     assert client.get("/api/notifications").status_code == 401
+
+
+def test_fcm_token_registration_and_unregistration(client, user_token):
+    headers = auth_headers(user_token)
+    token_str = "fcm-fake-device-token-12345"
+
+    # Register token
+    reg = client.post(
+        "/api/notifications/fcm-token",
+        json={"token": token_str, "platform": "android"},
+        headers=headers,
+    )
+    assert reg.status_code == 200
+    assert "registered successfully" in reg.json()["message"]
+
+    # Re-registering the same token idempotently updates it
+    reg2 = client.post(
+        "/api/notifications/fcm-token",
+        json={"token": token_str, "platform": "android"},
+        headers=headers,
+    )
+    assert reg2.status_code == 200
+
+    # Unregister token
+    unreg = client.delete(
+        f"/api/notifications/fcm-token?token={token_str}",
+        headers=headers,
+    )
+    assert unreg.status_code == 200
+    assert "unregistered successfully" in unreg.json()["message"]
+
+
+def test_daily_warranty_sweep_worker(client, user_token, db_session):
+    from app.worker import run_daily_warranty_sweep
+
+    # Create product expiring in 30 days
+    _product_expiring_in(client, user_token, 30, "Swept Product")
+
+    # Enable push notifications and register device token
+    client.put(
+        "/api/notifications/preferences",
+        json={"push_enabled": True},
+        headers=auth_headers(user_token),
+    )
+    client.post(
+        "/api/notifications/fcm-token",
+        json={"token": "test-sweep-device-token-abc", "platform": "android"},
+        headers=auth_headers(user_token),
+    )
+
+    # Run the worker sweep using the active test session
+    results = run_daily_warranty_sweep(db=db_session)
+    assert results["users_scanned"] >= 1
+    assert "notifications_generated" in results
+    assert "push_dispatched" in results

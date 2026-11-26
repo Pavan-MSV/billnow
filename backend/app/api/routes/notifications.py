@@ -7,8 +7,11 @@ from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select, update
 
 from app.api.deps import CurrentUser, DbSession
+from app.models.device_token import DeviceToken
 from app.models.notification import Notification
+from app.schemas.common import MessageResponse
 from app.schemas.notification import (
+    DeviceTokenRegisterRequest,
     NotificationOut,
     NotificationPreferenceOut,
     NotificationPreferenceUpdate,
@@ -106,3 +109,44 @@ def mark_read(
     db.commit()
     db.refresh(notification)
     return _to_out(notification)
+
+
+@router.post("/fcm-token", response_model=MessageResponse)
+def register_fcm_token(
+    payload: DeviceTokenRegisterRequest, current_user: CurrentUser, db: DbSession
+) -> MessageResponse:
+    """Register or update an FCM push device token for the authenticated user."""
+    token_str = payload.token.strip()
+    existing = db.execute(
+        select(DeviceToken).where(DeviceToken.token == token_str)
+    ).scalar_one_or_none()
+    if existing:
+        existing.user_id = current_user.id
+        existing.platform = payload.platform
+    else:
+        dev_token = DeviceToken(
+            user_id=current_user.id,
+            token=token_str,
+            platform=payload.platform,
+        )
+        db.add(dev_token)
+    db.commit()
+    return MessageResponse(message="Device token registered successfully.")
+
+
+@router.delete("/fcm-token", response_model=MessageResponse)
+def unregister_fcm_token(
+    token: str = Query(...), current_user: CurrentUser = None, db: DbSession = None
+) -> MessageResponse:
+    """Unregister an FCM push device token on logout."""
+    token_str = token.strip()
+    existing = db.execute(
+        select(DeviceToken).where(
+            DeviceToken.token == token_str,
+            DeviceToken.user_id == current_user.id,
+        )
+    ).scalar_one_or_none()
+    if existing:
+        db.delete(existing)
+        db.commit()
+    return MessageResponse(message="Device token unregistered successfully.")

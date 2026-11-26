@@ -50,3 +50,8 @@ class UnreadCountResponse(BaseModel):
 
 class ReadAllResponse(BaseModel):
     updated: int
+
+
+class DeviceTokenRegisterRequest(BaseModel):
+    token: str
+    platform: str = "android"

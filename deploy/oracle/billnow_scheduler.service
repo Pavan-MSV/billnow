@@ -1,0 +1,15 @@
+[Unit]
+Description=BillNow Daily Warranty Evaluation & FCM Notification Sweep
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/opt/billnow/backend
+EnvironmentFile=/opt/billnow/backend/.env
+ExecStart=/opt/billnow/backend/.venv/bin/python -m app.worker
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -11,6 +11,7 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.enums import AccountType, Theme
 
 if TYPE_CHECKING:
+    from app.models.device_token import DeviceToken
     from app.models.notification import Notification
     from app.models.notification_preference import NotificationPreference
     from app.models.product import Product
@@ -44,4 +45,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     notification_preference: Mapped[NotificationPreference | None] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    device_tokens: Mapped[list[DeviceToken]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )

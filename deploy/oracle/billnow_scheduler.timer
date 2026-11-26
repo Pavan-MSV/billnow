@@ -1,0 +1,14 @@
+[Unit]
+Description=Run BillNow Daily Warranty Evaluation at 00:00 Daily
+RefuseManualStart=no
+RefuseManualStop=no
+
+[Timer]
+# Run every day at 00:00:00
+OnCalendar=*-*-* 00:00:00
+# Run 5 minutes after boot if machine was offline when timer should have fired
+Persistent=true
+Unit=billnow_scheduler.service
+
+[Install]
+WantedBy=timers.target
