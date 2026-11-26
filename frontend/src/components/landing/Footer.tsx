@@ -21,6 +21,14 @@ const COLUMNS = [
       { label: 'Forgot password', to: '/forgot-password' },
     ],
   },
+  {
+    title: 'Legal & Privacy',
+    links: [
+      { label: 'Privacy Policy', to: '/privacy' },
+      { label: 'Terms and Conditions', to: '/terms' },
+      { label: 'Request Account Deletion', to: '/delete-account' },
+    ],
+  },
 ];
 
 /** Marketing footer. */

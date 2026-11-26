@@ -256,6 +256,10 @@ export const authApi = {
     api
       .post<MessageResponse>('/api/auth/reset-password', { token, new_password: newPassword })
       .then((r) => r.data),
+  requestAccountDeletion: (email: string) =>
+    api.post<MessageResponse>('/api/auth/request-account-deletion', { email }).then((r) => r.data),
+  confirmAccountDeletion: (token: string) =>
+    api.post<MessageResponse>('/api/auth/confirm-account-deletion', { token }).then((r) => r.data),
   logout: () => api.post<MessageResponse>('/api/auth/logout').then((r) => r.data),
   logoutAll: () => api.post<MessageResponse>('/api/auth/logout-all').then((r) => r.data),
   me: () => api.get<User>('/api/auth/me').then((r) => r.data),
@@ -389,6 +393,10 @@ export const notificationsApi = {
     api.get<NotificationPreferences>('/api/notifications/preferences').then((r) => r.data),
   updatePreferences: (payload: Partial<NotificationPreferences>) =>
     api.put<NotificationPreferences>('/api/notifications/preferences', payload).then((r) => r.data),
+  registerFcmToken: (token: string, platform = 'android') =>
+    api.post<MessageResponse>('/api/notifications/fcm-token', { token, platform }).then((r) => r.data),
+  unregisterFcmToken: (token: string) =>
+    api.delete<MessageResponse>('/api/notifications/fcm-token', { params: { token } }).then((r) => r.data),
 };
 
 /* -------------------------------------------------------------------------- */
@@ -421,11 +429,25 @@ export const settingsApi = {
     api.put<User>('/api/settings/preferences', payload).then((r) => r.data),
   changePassword: (payload: ChangePasswordInput) =>
     api.post<MessageResponse>('/api/settings/change-password', payload).then((r) => r.data),
-  exportData: async () => {
-    const response = await api.get<Blob>('/api/settings/export', { responseType: 'blob' });
-    triggerBlobDownload(response.data, `billnow-export-${Date.now()}.json`);
+  exportData: async (format: 'json' | 'csv' = 'json') => {
+    const response = await api.get<Blob>('/api/settings/export', {
+      params: { format },
+      responseType: 'blob',
+    });
+    const filename =
+      format === 'csv'
+        ? `billnow-products-${Date.now()}.csv`
+        : `billnow-export-${Date.now()}.json`;
+    triggerBlobDownload(response.data, filename);
   },
-  deleteAccount: () => api.delete<void>('/api/settings/account').then(() => undefined),
+  deleteAccount: (password?: string) =>
+    api
+      .request<void>({
+        method: 'DELETE',
+        url: '/api/settings/account',
+        data: password ? { password } : undefined,
+      })
+      .then(() => undefined),
 };
 
 /* -------------------------------------------------------------------------- */

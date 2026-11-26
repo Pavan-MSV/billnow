@@ -2,24 +2,29 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute, PublicOnlyRoute } from './components/layout/ProtectedRoute';
+import { OfflineBanner } from './components/ui/OfflineBanner';
 import { SplashPage } from './pages/SplashPage';
 import { AddProductPage } from './pages/AddProductPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { DeleteAccountPage } from './pages/DeleteAccountPage';
 import { EditProductPage } from './pages/EditProductPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { TermsPage } from './pages/TermsPage';
 
 /** Root router component for BillNow Mobile-First App. */
 export default function App() {
   return (
     <BrowserRouter>
+      <OfflineBanner />
       <Routes>
         {/* 3. Opening Splash Screen is the first screen when user opens BillNow */}
         <Route path="/" element={<SplashPage />} />
@@ -27,6 +32,11 @@ export default function App() {
 
         {/* Optional marketing landing page */}
         <Route path="/landing" element={<LandingPage />} />
+
+        {/* Public legal & compliance pages */}
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/delete-account" element={<DeleteAccountPage />} />
 
         {/* 4. Public authentication screens */}
         <Route element={<PublicOnlyRoute />}>

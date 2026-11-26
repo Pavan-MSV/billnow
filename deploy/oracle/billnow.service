@@ -1,0 +1,24 @@
+[Unit]
+Description=BillNow FastAPI Backend Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/billnow/backend
+EnvironmentFile=/opt/billnow/backend/.env
+ExecStart=/opt/billnow/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips='*'
+Restart=always
+RestartSec=5
+KillMode=process
+PrivateTmp=true
+LimitNOFILE=65535
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=billnow-backend
+
+[Install]
+WantedBy=multi-user.target

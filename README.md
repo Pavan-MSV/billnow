@@ -2,7 +2,29 @@
 
 > **“Never Forget a Warranty Again.”**
 
-BillNow is a **mobile-first, app-style web application** built to track product purchases, organize invoices, monitor warranty expirations, and record service histories. The entire user experience is crafted to look and feel like a native Android/iOS mobile application with touch-friendly controls, bottom navigation, mobile OTP verification, and clean phone dimensions (`max-w-[440px]`).
+BillNow is a **production-ready, mobile-first web and mobile hybrid application** built to track product purchases, organize invoices in private cloud storage, monitor warranty expirations, and record service histories. The entire application is architected to operate **100% free-of-cost (₹0/month budget)** using enterprise cloud free tiers.
+
+---
+
+## 🚀 Production Architecture & Operational Guides
+
+| Layer | Technology | Free Tier Provider | Dedicated Guide |
+| :--- | :--- | :--- | :--- |
+| **Frontend Web** | React 18 + Vite 6 + Tailwind | Cloudflare Pages | [CLOUDFLARE_PAGES_DEPLOYMENT.md](docs/CLOUDFLARE_PAGES_DEPLOYMENT.md) |
+| **Mobile Client** | Android Native (Capacitor) | Local / GitHub CI | [PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md#section-7-android-apk-generation-capacitor) |
+| **Backend REST API** | FastAPI + Python 3.12 | Oracle Cloud Always Free ARM64 | [PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md#section-1-oracle-cloud-always-free-vm-backend) |
+| **Database** | PostgreSQL Serverless | Neon.tech (Free Tier) | [DATABASE_OPERATIONS.md](docs/DATABASE_OPERATIONS.md) |
+| **Private Invoices** | S3-Compatible Object Vault | Cloudflare R2 (10 GB Free, Zero Egress) | [CLOUDFLARE_R2_SETUP.md](docs/CLOUDFLARE_R2_SETUP.md) |
+| **Push Notifications**| Push Daemon + Webhooks | Firebase Cloud Messaging (FCM) | [FCM_PUSH_SETUP.md](docs/FCM_PUSH_SETUP.md) |
+| **Transactional Email**| SMTP Relay & Templates | Brevo (300 emails/day Free) | [BREVO_SETUP_GUIDE.md](docs/BREVO_SETUP_GUIDE.md) |
+| **24/7 Monitoring** | Uptime & Health Check | UptimeRobot (Free 5-min checks) | [BACKUP_AND_MONITORING.md](docs/BACKUP_AND_MONITORING.md) |
+
+### 📋 Production Documentation Index
+* **[PRODUCTION_DEPLOYMENT_GUIDE.md](PRODUCTION_DEPLOYMENT_GUIDE.md):** Master step-by-step production runbook.
+* **[PRODUCTION_AUDIT.md](PRODUCTION_AUDIT.md):** In-depth technical audit of security, performance, and stack.
+* **[EXISTING_FEATURES.md](EXISTING_FEATURES.md):** Complete catalog of all verified features (73 passing tests).
+* **[MISSING_FEATURES.md](MISSING_FEATURES.md):** Architectural gap analysis.
+* **[PRODUCTION_ROADMAP.md](PRODUCTION_ROADMAP.md):** Phase-by-phase execution plan.
 
 ---
 
