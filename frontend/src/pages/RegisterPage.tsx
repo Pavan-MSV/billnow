@@ -1,6 +1,16 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, User, Phone, ShieldCheck, ArrowLeft, RefreshCw, KeyRound, Sparkles } from 'lucide-react';
+import {
+  Mail,
+  User,
+  Phone,
+  ShieldCheck,
+  ArrowLeft,
+  RefreshCw,
+  KeyRound,
+  Smartphone,
+  CheckCircle2,
+} from 'lucide-react';
 
 import { authApi, getErrorMessage } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -22,13 +32,14 @@ export function RegisterPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [channel, setChannel] = useState<'email' | 'sms'>('email');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
 
   // Step 2 OTP State
   const [step, setStep] = useState<'details' | 'otp'>('details');
   const [otp, setOtp] = useState('');
-  const [devOtp, setDevOtp] = useState('');
+  const [activeChannel, setActiveChannel] = useState<'email' | 'sms'>('email');
   const [sendingOtp, setSendingOtp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -47,7 +58,7 @@ export function RegisterPage() {
     if (!name.trim()) next.name = 'Full name is required.';
     if (!email.trim()) next.email = 'Email address is required.';
     else if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = 'Enter a valid email address.';
-    
+
     const cleanPhone = phone.trim().replace(/[\s-]/g, '');
     if (!cleanPhone) next.phone = 'Mobile number is required.';
     else if (cleanPhone.length < 10) next.phone = 'Enter a valid mobile number (at least 10 digits).';
@@ -55,31 +66,37 @@ export function RegisterPage() {
     if (!password) next.password = 'Password is required.';
     else if (password.length < 8) next.password = 'Password must be at least 8 characters.';
     if (confirm !== password) next.confirm = 'Passwords do not match.';
-    
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
 
-  const handleSendOtp = async (event: FormEvent) => {
-    event.preventDefault();
+  const handleSendOtp = async (event?: FormEvent, targetChannel?: 'email' | 'sms') => {
+    if (event) event.preventDefault();
     setFormError('');
     if (!validateDetails()) return;
 
+    const chosenChannel = targetChannel || channel;
     setSendingOtp(true);
     try {
       const res = await authApi.sendOtp({
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
+        channel: chosenChannel,
       });
-      if (res.dev_otp) {
-        setDevOtp(res.dev_otp);
-      }
+
+      setActiveChannel(chosenChannel);
       setResendCooldown(30);
       setStep('otp');
+
       showToast({
         variant: 'success',
-        title: 'Verification code sent',
-        message: `OTP sent to ${email.trim()} and ${phone.trim()}`,
+        title: chosenChannel === 'sms' ? 'SMS sent' : 'Email sent',
+        message:
+          res.message ||
+          (chosenChannel === 'sms'
+            ? `Verification code sent via SMS to ${phone.trim()}`
+            : `Verification code sent to ${email.trim()}`),
       });
     } catch (error) {
       setFormError(getErrorMessage(error, 'Unable to send verification code. Please check your details.'));
@@ -90,27 +107,12 @@ export function RegisterPage() {
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0 || sendingOtp) return;
-    setSendingOtp(true);
-    setFormError('');
-    try {
-      const res = await authApi.sendOtp({
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
-      });
-      if (res.dev_otp) {
-        setDevOtp(res.dev_otp);
-      }
-      setResendCooldown(30);
-      showToast({
-        variant: 'success',
-        title: 'Code resent successfully',
-        message: `New code sent to ${email.trim()} and ${phone.trim()}`,
-      });
-    } catch (error) {
-      setFormError(getErrorMessage(error, 'Failed to resend code. Please try again.'));
-    } finally {
-      setSendingOtp(false);
-    }
+    await handleSendOtp(undefined, activeChannel);
+  };
+
+  const handleSwitchChannelAndSend = async (newChannel: 'email' | 'sms') => {
+    if (sendingOtp) return;
+    await handleSendOtp(undefined, newChannel);
   };
 
   const handleVerifyAndRegister = async (event: FormEvent) => {
@@ -118,7 +120,7 @@ export function RegisterPage() {
     setFormError('');
 
     if (!otp.trim() || otp.trim().length < 4) {
-      setFormError('Please enter the verification code sent to your email and mobile.');
+      setFormError('Please enter the 6-digit verification code sent to you.');
       return;
     }
 
@@ -132,7 +134,7 @@ export function RegisterPage() {
         otp: otp.trim(),
         account_type: 'personal',
       });
-      
+
       // Save local phone cache for convenient offline access
       localStorage.setItem('billnow_user_phone', phone.trim());
 
@@ -169,37 +171,63 @@ export function RegisterPage() {
         <form onSubmit={handleVerifyAndRegister} noValidate className="space-y-4">
           {formError && <ErrorState title="Verification Error" message={formError} className="py-3" />}
 
-          {/* Verification Target Info Card */}
-          <div className="rounded-2xl border border-line bg-surface/70 p-3.5 space-y-2">
-            <p className="text-[11px] font-semibold text-subtle uppercase tracking-wider">
-              Verification code sent to
-            </p>
-            <div className="flex flex-col gap-1 text-xs">
-              <div className="flex items-center gap-2 font-medium text-ink">
-                <Mail className="h-3.5 w-3.5 text-brand-600" />
-                <span>{email}</span>
+          {/* Delivery Target Banner */}
+          <div className="rounded-2xl border border-line bg-surface/70 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-subtle uppercase tracking-wider">
+                Verification Code Sent
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/10 px-2 py-0.5 text-[11px] font-semibold text-brand-600 dark:text-brand-400">
+                <CheckCircle2 className="h-3 w-3" />
+                {activeChannel === 'sms' ? 'SMS' : 'Email'}
+              </span>
+            </div>
+
+            {activeChannel === 'sms' ? (
+              <div className="flex items-start gap-3 rounded-xl bg-surface p-3 border border-line">
+                <div className="rounded-lg bg-brand-500/10 p-2 text-brand-600">
+                  <Smartphone className="h-4 w-4" />
+                </div>
+                <div className="text-xs">
+                  <p className="font-semibold text-ink">{phone}</p>
+                  <p className="text-subtle text-[11px]">Check your phone messages for the 6-digit code.</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2 font-medium text-ink">
-                <Phone className="h-3.5 w-3.5 text-brand-600" />
-                <span>{phone}</span>
+            ) : (
+              <div className="flex items-start gap-3 rounded-xl bg-surface p-3 border border-line">
+                <div className="rounded-lg bg-brand-500/10 p-2 text-brand-600">
+                  <Mail className="h-4 w-4" />
+                </div>
+                <div className="text-xs">
+                  <p className="font-semibold text-ink">{email}</p>
+                  <p className="text-subtle text-[11px]">Check your inbox or spam folder for the code.</p>
+                </div>
               </div>
+            )}
+
+            {/* Switch Channel Quick Link */}
+            <div className="pt-1 text-center">
+              {activeChannel === 'sms' ? (
+                <button
+                  type="button"
+                  disabled={sendingOtp}
+                  onClick={() => handleSwitchChannelAndSend('email')}
+                  className="text-[11px] text-brand-600 dark:text-brand-400 hover:underline font-medium"
+                >
+                  Didn't receive SMS? <strong>Send code to email instead</strong>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={sendingOtp}
+                  onClick={() => handleSwitchChannelAndSend('sms')}
+                  className="text-[11px] text-brand-600 dark:text-brand-400 hover:underline font-medium"
+                >
+                  Didn't receive email? <strong>Send code via SMS instead</strong>
+                </button>
+              )}
             </div>
           </div>
-
-          {/* Quick Demo Helper (if available) */}
-          {devOtp && (
-            <button
-              type="button"
-              onClick={() => setOtp(devOtp)}
-              className="w-full flex items-center justify-between rounded-xl bg-brand-50/80 dark:bg-brand-500/15 border border-brand-200 dark:border-brand-500/30 px-3 py-2 text-xs text-brand-700 dark:text-brand-300 active:scale-98 transition-transform"
-            >
-              <div className="flex items-center gap-1.5 font-medium">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Test Code: <strong>{devOtp}</strong></span>
-              </div>
-              <span className="text-[11px] font-bold underline">Tap to autofill</span>
-            </button>
-          )}
 
           {/* OTP Input */}
           <div>
@@ -268,7 +296,7 @@ export function RegisterPage() {
         </>
       }
     >
-      <form onSubmit={handleSendOtp} noValidate className="space-y-3.5">
+      <form onSubmit={(e) => handleSendOtp(e)} noValidate className="space-y-3.5">
         {formError && <ErrorState title="Registration error" message={formError} className="py-3" />}
 
         <Input
@@ -298,14 +326,52 @@ export function RegisterPage() {
           label="Mobile number"
           type="tel"
           autoComplete="tel"
-          placeholder="e.g. +91 98765 43210"
+          placeholder="e.g. 7382082800"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
           error={errors.phone}
           leftIcon={<Phone className="h-4 w-4" />}
-          hint="We'll send an OTP to verify your mobile & email"
+          hint="10-digit mobile number for SMS OTP and warranty alerts"
           required
         />
+
+        {/* Channel Selector: Email vs SMS */}
+        <div className="space-y-1.5 pt-1">
+          <label className="block text-xs font-bold text-ink">
+            Send verification OTP via:
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setChannel('email')}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 border text-xs font-bold transition-all ${
+                channel === 'email'
+                  ? 'bg-brand-500/10 border-brand-500 text-brand-600 dark:text-brand-400 ring-2 ring-brand-500/20'
+                  : 'border-line bg-surface/50 text-subtle hover:text-ink hover:border-line-focus'
+              }`}
+            >
+              <Mail className="h-4 w-4" />
+              <span>Email OTP</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setChannel('sms')}
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 border text-xs font-bold transition-all ${
+                channel === 'sms'
+                  ? 'bg-brand-500/10 border-brand-500 text-brand-600 dark:text-brand-400 ring-2 ring-brand-500/20'
+                  : 'border-line bg-surface/50 text-subtle hover:text-ink hover:border-line-focus'
+              }`}
+            >
+              <Smartphone className="h-4 w-4" />
+              <span>Mobile SMS</span>
+            </button>
+          </div>
+          <p className="text-[11px] text-subtle">
+            {channel === 'email'
+              ? 'Verification code will be sent to your email inbox.'
+              : 'Verification code will be sent as an SMS to your mobile.'}
+          </p>
+        </div>
 
         <PasswordInput
           label="Password"
@@ -334,7 +400,7 @@ export function RegisterPage() {
           loading={sendingOtp}
           className="h-12 text-sm font-bold shadow-md mt-2"
         >
-          Send Verification Code
+          {channel === 'sms' ? 'Send Code via SMS' : 'Send Code via Email'}
         </Button>
       </form>
     </AuthLayout>

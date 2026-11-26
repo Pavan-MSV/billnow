@@ -1,5 +1,7 @@
 """Authentication schemas."""
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.enums import AccountType
@@ -10,6 +12,7 @@ from app.schemas.validators import validate_password_strength
 class SendOtpRequest(BaseModel):
     email: EmailStr
     phone: str = Field(min_length=7, max_length=25)
+    channel: Literal["email", "sms"] = "email"
 
 
 class VerifyOtpRequest(BaseModel):
@@ -19,6 +22,7 @@ class VerifyOtpRequest(BaseModel):
 
 class OtpResponse(BaseModel):
     message: str
+    channel: str = "email"
     dev_otp: str | None = None
     expires_in: int = 600
 

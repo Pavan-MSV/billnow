@@ -46,6 +46,7 @@ from app.services.email import (
     send_password_reset_email,
 )
 from app.services.notifications import get_or_create_preferences
+from app.services.sms import send_otp_sms
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -87,6 +88,7 @@ def _user_from_subject(db: DbSession, subject: str | None) -> User | None:
 def send_otp(request: Request, payload: SendOtpRequest, db: DbSession) -> OtpResponse:
     _cleanup_expired_otps()
     email = payload.email.lower()
+    channel = payload.channel.lower()
 
     # Check if email is already taken
     existing = db.execute(select(User).where(func.lower(User.email) == email)).scalar_one_or_none()
@@ -101,18 +103,54 @@ def send_otp(request: Request, payload: SendOtpRequest, db: DbSession) -> OtpRes
     _otp_cache[email] = {
         "otp": otp,
         "phone": payload.phone,
+        "channel": channel,
         "expires_at": time.time() + 600,
         "verified": False,
         "attempts": 0,
     }
 
-    # Dispatch email OTP
-    send_otp_email(payload.email, otp)
-    logger.info("Verification code generated for email=%s, phone=%s", email, payload.phone)
+    if channel == "sms":
+        if not settings.SMS_ENABLED:
+            logger.info("SMS request received but SMS_ENABLED is False (phone=%s)", payload.phone)
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="SMS delivery is not configured on the server yet. Please select Email verification.",
+                )
+        else:
+            sent = send_otp_sms(payload.phone, otp)
+            if not sent:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Failed to send SMS to your mobile number. Please check the number or choose Email verification.",
+                )
+        message = f"Verification code sent via SMS to {payload.phone}."
+    else:
+        # Email channel
+        if settings.EMAIL_ENABLED:
+            sent = send_otp_email(payload.email, otp)
+            if not sent:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Failed to deliver verification email. Please check your email address or try again.",
+                )
+        else:
+            logger.info("Email request received but EMAIL_ENABLED is False (email=%s)", email)
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email delivery is not configured on the server. Please contact support or configure SMTP.",
+                )
+            # In test/development, invoke handler for coverage/logging
+            send_otp_email(payload.email, otp)
+        message = f"Verification code sent to {payload.email}."
+
+    logger.info("Verification code generated for email=%s, phone=%s, channel=%s", email, payload.phone, channel)
 
     return OtpResponse(
-        message=f"Verification code sent to {payload.email} and {payload.phone}.",
-        dev_otp=otp if not settings.is_production else None,
+        message=message,
+        channel=channel,
+        dev_otp=otp if settings.ENVIRONMENT == "test" else None,
         expires_in=600,
     )
 

@@ -224,10 +224,12 @@ export interface LoginInput {
 export interface SendOtpInput {
   email: string;
   phone: string;
+  channel?: 'email' | 'sms';
 }
 
 export interface SendOtpResponse {
   message: string;
+  channel?: 'email' | 'sms';
   dev_otp?: string;
   expires_in: number;
 }

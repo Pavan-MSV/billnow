@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     SMTP_FROM: str = "no-reply@billnow.app"
     SMTP_USE_TLS: bool = True
 
+    # --- SMS Gateway (Fast2SMS / Twilio) ---
+    SMS_ENABLED: bool = False
+    SMS_PROVIDER: str = "fast2sms"  # "fast2sms" or "twilio"
+    FAST2SMS_API_KEY: str | None = None
+    TWILIO_ACCOUNT_SID: str | None = None
+    TWILIO_AUTH_TOKEN: str | None = None
+    TWILIO_FROM_NUMBER: str | None = None
+
     # --- Rate limiting ---
     RATE_LIMIT_ENABLED: bool = True
     RATE_LIMIT_PER_MINUTE: int = 120

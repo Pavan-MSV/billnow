@@ -129,9 +129,10 @@ def test_otp_flow_and_attempt_limit(client):
     email = "otp-limit-test@example.com"
     phone = "+919876543210"
 
-    # Send OTP
-    send_resp = client.post("/api/auth/send-otp", json={"email": email, "phone": phone})
+    # Send OTP via Email
+    send_resp = client.post("/api/auth/send-otp", json={"email": email, "phone": phone, "channel": "email"})
     assert send_resp.status_code == 200
+    assert send_resp.json()["channel"] == "email"
     otp = send_resp.json().get("dev_otp")
     assert otp is not None
 
@@ -153,6 +154,21 @@ def test_otp_flow_and_attempt_limit(client):
     # Subsequent attempt with even the right OTP fails because it was revoked
     bad_after = client.post("/api/auth/verify-otp", json={"email": email, "otp": otp})
     assert bad_after.status_code == 400
+
+
+def test_otp_send_via_sms_channel(client, monkeypatch):
+    from app.core.config import settings
+
+    email = "otp-sms-test@example.com"
+    phone = "+919876543210"
+
+    # Send OTP via SMS channel
+    send_resp = client.post("/api/auth/send-otp", json={"email": email, "phone": phone, "channel": "sms"})
+    assert send_resp.status_code == 200
+    body = send_resp.json()
+    assert body["channel"] == "sms"
+    assert "Verification code sent via SMS" in body["message"]
+    assert body.get("dev_otp") is not None
 
 
 def test_health_check_probes_database(client):
