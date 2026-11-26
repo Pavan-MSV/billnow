@@ -8,8 +8,9 @@ from fastapi.responses import Response
 
 from app.api.deps import CurrentUser, DbSession
 from app.api.routes.products import get_owned_product
+from app.core.config import settings
 from app.models.invoice import Invoice
-from app.schemas.invoice import InvoiceOut
+from app.schemas.invoice import InvoiceOut, PresignedUrlResponse
 from app.services.storage import build_invoice_key, get_storage
 from app.services.uploads import validate_invoice_upload
 
@@ -43,7 +44,7 @@ def upload_invoice(
 
     data = file.file.read()
     filename = file.filename or "invoice"
-    validate_invoice_upload(filename, file.content_type, len(data))
+    validate_invoice_upload(filename, file.content_type, len(data), data)
 
     storage = get_storage()
     key = build_invoice_key(current_user.id, product.id, filename)
@@ -83,6 +84,25 @@ def get_invoice(product_id: uuid.UUID, current_user: CurrentUser, db: DbSession)
     if product.invoice is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No invoice uploaded")
     return InvoiceOut.model_validate(product.invoice)
+
+
+@router.get("/{product_id}/invoice/url", response_model=PresignedUrlResponse)
+def get_invoice_presigned_url(
+    product_id: uuid.UUID, current_user: CurrentUser, db: DbSession
+) -> PresignedUrlResponse:
+    """Generate a temporary signed download URL for private Cloudflare R2 / S3 access."""
+    product = get_owned_product(db, current_user.id, product_id)
+    if product.invoice is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No invoice uploaded")
+
+    storage = get_storage()
+    signed = storage.generate_presigned_url(product.invoice.storage_path, expires_in=900)
+    if signed:
+        return PresignedUrlResponse(url=signed, expires_in=900)
+
+    # Fallback to backend streaming URL when storage backend doesn't support S3 presigned URLs (e.g. local in dev)
+    fallback = f"{settings.API_PREFIX}/products/{product.id}/invoice/view"
+    return PresignedUrlResponse(url=fallback, expires_in=900)
 
 
 @router.get("/{product_id}/invoice/view")

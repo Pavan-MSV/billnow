@@ -16,3 +16,8 @@ class InvoiceOut(BaseModel):
     file_size: int
     storage_path: str
     uploaded_at: datetime
+
+
+class PresignedUrlResponse(BaseModel):
+    url: str
+    expires_in: int = 900

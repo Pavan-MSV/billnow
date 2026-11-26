@@ -58,3 +58,14 @@ class S3Storage(StorageBackend):
         if self.public_url:
             return f"{self.public_url}/{key}"
         return None
+
+    def generate_presigned_url(self, key: str, expires_in: int = 900) -> str | None:
+        """Generate a temporary signed download URL for private Cloudflare R2 / S3 objects."""
+        try:
+            return self._client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self.bucket, "Key": key},
+                ExpiresIn=expires_in,
+            )
+        except Exception:
+            return None

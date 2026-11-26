@@ -31,6 +31,10 @@ class StorageBackend(ABC):
         """Return a public/derived URL for the object, when the backend supports it."""
         return None
 
+    def generate_presigned_url(self, key: str, expires_in: int = 900) -> str | None:
+        """Generate a temporary signed download URL when supported by the backend (e.g. S3/Cloudflare R2)."""
+        return None
+
 
 def build_invoice_key(user_id, product_id, filename: str) -> str:
     """Deterministic-yet-unique object key for an invoice file."""

@@ -73,12 +73,30 @@ def test_delete_invoice(client, user_token):
     assert client.get(f"/api/products/{product['id']}/invoice", headers=headers).status_code == 404
 
 
-def test_rejects_unsupported_file_type(client, user_token):
+def test_rejects_corrupted_or_mismatched_magic_bytes(client, user_token):
     product = create_product(client, user_token)
     response = _upload(
-        client, user_token, product["id"], filename="malware.exe", content_type="application/x-msdownload"
+        client, user_token, product["id"], filename="fake.pdf", data=b"MALICIOUS_NON_PDF_BINARY_DATA"
     )
     assert response.status_code == 400
+    assert "Corrupted or invalid file content" in response.json()["detail"]
+
+
+def test_invoice_presigned_url_endpoint(client, user_token, second_user_token):
+    product = create_product(client, user_token)
+    _upload(client, user_token, product["id"])
+
+    # Owner can retrieve download URL
+    res = client.get(f"/api/products/{product['id']}/invoice/url", headers=auth_headers(user_token))
+    assert res.status_code == 200
+    assert "url" in res.json()
+    assert res.json()["expires_in"] == 900
+
+    # Non-owner cannot access (404)
+    res_other = client.get(
+        f"/api/products/{product['id']}/invoice/url", headers=auth_headers(second_user_token)
+    )
+    assert res_other.status_code == 404
 
 
 def test_rejects_oversized_file(client, user_token, monkeypatch):
