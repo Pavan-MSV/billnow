@@ -18,6 +18,7 @@ htmlcov/
 # Storage uploads directory (ignore uploaded files, but keep app/services/storage source code)
 /backend/storage/
 !backend/app/services/storage/**
+backend/app/services/storage/__pycache__/
 
 # ---- Node / frontend ----
 node_modules/
