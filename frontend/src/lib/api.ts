@@ -212,6 +212,7 @@ export interface RegisterInput {
   email: string;
   phone?: string;
   otp?: string;
+  firebase_id_token?: string;
   password: string;
   account_type?: 'personal' | 'business';
 }

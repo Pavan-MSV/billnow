@@ -13,6 +13,11 @@ import {
 } from 'lucide-react';
 
 import { authApi, getErrorMessage } from '../lib/api';
+import {
+  isFirebaseConfigured,
+  sendFirebasePhoneOtp,
+  verifyFirebasePhoneOtp,
+} from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { AuthLayout } from '../components/layout/AuthLayout';
@@ -40,6 +45,7 @@ export function RegisterPage() {
   const [step, setStep] = useState<'details' | 'otp'>('details');
   const [otp, setOtp] = useState('');
   const [activeChannel, setActiveChannel] = useState<'email' | 'sms'>('email');
+  const [isFirebaseSession, setIsFirebaseSession] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -79,25 +85,42 @@ export function RegisterPage() {
     const chosenChannel = targetChannel || channel;
     setSendingOtp(true);
     try {
-      const res = await authApi.sendOtp({
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
-        channel: chosenChannel,
-      });
+      // If user selected SMS and Firebase is configured, use Firebase Phone Auth
+      if (chosenChannel === 'sms' && isFirebaseConfigured) {
+        await sendFirebasePhoneOtp(phone.trim(), 'recaptcha-container');
+        setIsFirebaseSession(true);
+        setActiveChannel('sms');
+        setResendCooldown(30);
+        setStep('otp');
 
-      setActiveChannel(chosenChannel);
-      setResendCooldown(30);
-      setStep('otp');
+        showToast({
+          variant: 'success',
+          title: 'SMS Sent via Firebase',
+          message: `Verification code sent to ${phone.trim()}`,
+        });
+      } else {
+        // Use Backend API (Email OTP or Backend SMS Gateway)
+        setIsFirebaseSession(false);
+        const res = await authApi.sendOtp({
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          channel: chosenChannel,
+        });
 
-      showToast({
-        variant: 'success',
-        title: chosenChannel === 'sms' ? 'SMS sent' : 'Email sent',
-        message:
-          res.message ||
-          (chosenChannel === 'sms'
-            ? `Verification code sent via SMS to ${phone.trim()}`
-            : `Verification code sent to ${email.trim()}`),
-      });
+        setActiveChannel(chosenChannel);
+        setResendCooldown(30);
+        setStep('otp');
+
+        showToast({
+          variant: 'success',
+          title: chosenChannel === 'sms' ? 'SMS sent' : 'Email sent',
+          message:
+            res.message ||
+            (chosenChannel === 'sms'
+              ? `Verification code sent via SMS to ${phone.trim()}`
+              : `Verification code sent to ${email.trim()}`),
+        });
+      }
     } catch (error) {
       setFormError(getErrorMessage(error, 'Unable to send verification code. Please check your details.'));
     } finally {
@@ -126,12 +149,21 @@ export function RegisterPage() {
 
     setSubmitting(true);
     try {
+      let firebaseToken: string | undefined = undefined;
+
+      // If this was a Firebase SMS session, confirm with Firebase to get ID token
+      if (isFirebaseSession) {
+        const result = await verifyFirebasePhoneOtp(otp.trim());
+        firebaseToken = result.idToken;
+      }
+
       await register({
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         password,
-        otp: otp.trim(),
+        otp: isFirebaseSession ? undefined : otp.trim(),
+        firebase_id_token: firebaseToken,
         account_type: 'personal',
       });
 
@@ -171,6 +203,9 @@ export function RegisterPage() {
         <form onSubmit={handleVerifyAndRegister} noValidate className="space-y-4">
           {formError && <ErrorState title="Verification Error" message={formError} className="py-3" />}
 
+          {/* Hidden container for Firebase invisible reCAPTCHA */}
+          <div id="recaptcha-container"></div>
+
           {/* Delivery Target Banner */}
           <div className="rounded-2xl border border-line bg-surface/70 p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -179,7 +214,7 @@ export function RegisterPage() {
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-brand-500/10 px-2 py-0.5 text-[11px] font-semibold text-brand-600 dark:text-brand-400">
                 <CheckCircle2 className="h-3 w-3" />
-                {activeChannel === 'sms' ? 'SMS' : 'Email'}
+                {activeChannel === 'sms' ? (isFirebaseSession ? 'Firebase SMS' : 'SMS') : 'Email'}
               </span>
             </div>
 
@@ -299,6 +334,9 @@ export function RegisterPage() {
       <form onSubmit={(e) => handleSendOtp(e)} noValidate className="space-y-3.5">
         {formError && <ErrorState title="Registration error" message={formError} className="py-3" />}
 
+        {/* Hidden container for Firebase invisible reCAPTCHA */}
+        <div id="recaptcha-container"></div>
+
         <Input
           label="Full name"
           autoComplete="name"
@@ -369,6 +407,8 @@ export function RegisterPage() {
           <p className="text-[11px] text-subtle">
             {channel === 'email'
               ? 'Verification code will be sent to your email inbox.'
+              : isFirebaseConfigured
+              ? 'Verification code will be sent via Firebase SMS to your phone.'
               : 'Verification code will be sent as an SMS to your mobile.'}
           </p>
         </div>

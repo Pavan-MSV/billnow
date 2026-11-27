@@ -205,9 +205,33 @@ def register(request: Request, payload: RegisterRequest, db: DbSession) -> Token
             detail="An account with this email already exists.",
         )
 
-    # If an OTP is provided or exists in cache, check verification
+    # Verify via Firebase ID Token (for Firebase Phone SMS Auth) OR via internal OTP
     stored = _otp_cache.get(email)
-    if payload.otp:
+    phone_from_token = None
+    if payload.firebase_id_token:
+        from app.services.fcm import _get_firebase_app
+        if _get_firebase_app():
+            try:
+                from firebase_admin import auth as fb_auth
+                decoded = fb_auth.verify_id_token(payload.firebase_id_token)
+                phone_from_token = decoded.get("phone_number")
+                if payload.phone and phone_from_token:
+                    clean_in = "".join(ch for ch in payload.phone if ch.isdigit())
+                    clean_tok = "".join(ch for ch in phone_from_token if ch.isdigit())
+                    if clean_in[-10:] != clean_tok[-10:]:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Verified phone number does not match registration phone number.",
+                        )
+            except HTTPException:
+                raise
+            except Exception as exc:
+                logger.warning("Firebase ID token verification failed: %s", exc)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid or expired Firebase verification token.",
+                )
+    elif payload.otp:
         if not stored or time.time() > stored["expires_at"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -222,7 +246,7 @@ def register(request: Request, payload: RegisterRequest, db: DbSession) -> Token
     user = User(
         name=payload.name,
         email=email,
-        phone=payload.phone or (stored.get("phone") if stored else None),
+        phone=payload.phone or phone_from_token or (stored.get("phone") if stored else None),
         password_hash=hash_password(payload.password),
         account_type=payload.account_type.value,
     )

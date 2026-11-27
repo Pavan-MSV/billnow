@@ -32,6 +32,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     phone: str | None = Field(default=None, max_length=30)
     otp: str | None = None
+    firebase_id_token: str | None = None
     password: str
     account_type: AccountType = AccountType.personal
 

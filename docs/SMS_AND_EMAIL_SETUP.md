@@ -6,7 +6,34 @@ Both options run on ₹0 free-tier cloud services.
 
 ---
 
-## 1. Fast2SMS (Free Mobile SMS Gateway for India)
+## 1. Google Firebase Phone Authentication (Recommended for SMS: 10,000 Free SMS/Month)
+
+Firebase Phone Authentication uses Google's worldwide SMS delivery network to send genuine verification codes to mobile devices. Google provides **10,000 free phone verifications every month** at ₹0.
+
+### Step-by-Step Setup:
+1. Open the [Firebase Console](https://console.firebase.google.com/) and go to your **`billnow-app`** project.
+2. In the left menu, navigate to **Build** -> **Authentication**.
+3. Go to the **Sign-in method** tab.
+4. Click **Phone**, toggle **Enable**, and click **Save**.
+5. Go to **Project settings** (gear icon) -> **General** tab.
+6. Under **Your apps**, click the **Web icon (`</>`)** to register a web app (name it `BillNow Web`).
+7. Copy the `firebaseConfig` keys provided by Google.
+8. In your frontend environment (Vercel Project Settings -> Environment Variables, or `frontend/.env`), add:
+   ```env
+   VITE_FIREBASE_API_KEY=AIzaSy...
+   VITE_FIREBASE_AUTH_DOMAIN=billnow-app.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=billnow-app
+   VITE_FIREBASE_STORAGE_BUCKET=billnow-app.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=1234567890
+   VITE_FIREBASE_APP_ID=1:1234567890:web:...
+   ```
+9. In Firebase Console -> **Authentication** -> **Settings** -> **Authorized domains**, ensure your Vercel URL (e.g. `billnow-one.vercel.app`) and `localhost` are listed.
+
+Now, whenever a user clicks **[ 📱 Mobile SMS ]**, Firebase dispatches the SMS directly from Google's infrastructure and verifies the code with invisible reCAPTCHA protection.
+
+---
+
+## 2. Fast2SMS (Alternative: Free India SMS Gateway)
 
 Fast2SMS is the easiest way to send real SMS verification codes to Indian mobile numbers (+91) with zero upfront cost.
 
