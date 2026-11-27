@@ -382,11 +382,10 @@ export function RegisterPage() {
             <button
               type="button"
               onClick={() => setChannel('email')}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 border text-xs font-bold transition-all ${
-                channel === 'email'
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 border text-xs font-bold transition-all ${channel === 'email'
                   ? 'bg-brand-500/10 border-brand-500 text-brand-600 dark:text-brand-400 ring-2 ring-brand-500/20'
                   : 'border-line bg-surface/50 text-subtle hover:text-ink hover:border-line-focus'
-              }`}
+                }`}
             >
               <Mail className="h-4 w-4" />
               <span>Email OTP</span>
@@ -394,11 +393,10 @@ export function RegisterPage() {
             <button
               type="button"
               onClick={() => setChannel('sms')}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 border text-xs font-bold transition-all ${
-                channel === 'sms'
+              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 border text-xs font-bold transition-all ${channel === 'sms'
                   ? 'bg-brand-500/10 border-brand-500 text-brand-600 dark:text-brand-400 ring-2 ring-brand-500/20'
                   : 'border-line bg-surface/50 text-subtle hover:text-ink hover:border-line-focus'
-              }`}
+                }`}
             >
               <Smartphone className="h-4 w-4" />
               <span>Mobile SMS</span>
@@ -408,8 +406,8 @@ export function RegisterPage() {
             {channel === 'email'
               ? 'Verification code will be sent to your email inbox.'
               : isFirebaseConfigured
-              ? 'Verification code will be sent via Firebase SMS to your phone.'
-              : 'Verification code will be sent as an SMS to your mobile.'}
+                ? 'Verification code will be sent via Firebase SMS to your phone.'
+                : 'Verification code will be sent as an SMS to your mobile.'}
           </p>
         </div>
 
